@@ -20,7 +20,7 @@ export async function processarExtratoNoBackend(
   const apiUrl = getPublicApiUrl();
 
   onStatus?.(
-    "Processando PDF com IA… Extratos grandes podem levar até 5 min — não feche a página.",
+    "Extraindo lançamentos e classificando… Geralmente leva menos de 1 minuto.",
   );
 
   try {
@@ -30,14 +30,14 @@ export async function processarExtratoNoBackend(
         Authorization: `Bearer ${accessToken}`,
       },
       body: formData,
-      signal: AbortSignal.timeout(360_000),
+      signal: AbortSignal.timeout(120_000),
     });
   } catch (err) {
     const isTimeout =
       err instanceof DOMException && err.name === "TimeoutError";
     if (isTimeout) {
       throw new Error(
-        "O processamento passou de 5 minutos. Tente um PDF menor ou aguarde e tente de novo.",
+        "O processamento passou de 2 minutos. Tente novamente — se persistir, avise o suporte.",
       );
     }
     throw new Error(

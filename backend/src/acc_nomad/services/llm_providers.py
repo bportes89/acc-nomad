@@ -31,7 +31,13 @@ class LlmCallError(RuntimeError):
     pass
 
 
-def generate_json(system: str, user: str) -> dict:
+def generate_json(
+    system: str,
+    user: str,
+    *,
+    fast: bool = False,
+    max_tokens: int | None = None,
+) -> dict:
     provider = _resolve_provider()
     if provider == "fallback":
         return {"transactions": []}
@@ -39,7 +45,7 @@ def generate_json(system: str, user: str) -> dict:
     explicit = settings.llm_provider.lower() != "auto"
 
     try:
-        text = _call_provider(provider, system, user)
+        text = _call_provider(provider, system, user, fast=fast, max_tokens=max_tokens)
         return _parse_json_payload(text)
     except json.JSONDecodeError as exc:
         logger.warning("LLM %s retornou JSON inválido: %s", provider, exc)
@@ -49,9 +55,15 @@ def generate_json(system: str, user: str) -> dict:
         if explicit:
             hint = ""
             if provider == "anthropic" and "not_found_error" in str(exc):
-                hint = f" Verifique ANTHROPIC_MODEL (atual: {settings.anthropic_model})."
+                model = settings.anthropic_model_fast if fast else settings.anthropic_model
+                hint = f" Verifique ANTHROPIC_MODEL (atual: {model})."
             raise LlmCallError(f"Erro na API {provider}: {exc}{hint}") from exc
         return {"transactions": []}
+
+
+def generate_json_fast(system: str, user: str) -> dict:
+    """Classificação rápida — usa Haiku quando Anthropic está configurado."""
+    return generate_json(system, user, fast=True, max_tokens=4096)
 
 
 def active_provider_name() -> str:
@@ -96,7 +108,14 @@ def _require_api_key(provider: str) -> None:
         )
 
 
-def _call_provider(provider: str, system: str, user: str) -> str:
+def _call_provider(
+    provider: str,
+    system: str,
+    user: str,
+    *,
+    fast: bool = False,
+    max_tokens: int | None = None,
+) -> str:
     if provider == "gemini":
         return _call_gemini(system, user)
     if provider == "groq":
@@ -116,7 +135,7 @@ def _call_provider(provider: str, system: str, user: str) -> str:
             user=user,
         )
     if provider == "anthropic":
-        return _call_anthropic(system, user)
+        return _call_anthropic(system, user, fast=fast, max_tokens=max_tokens)
     return "{}"
 
 
@@ -166,13 +185,21 @@ def _call_openai_compatible(
     return response.choices[0].message.content or "{}"
 
 
-def _call_anthropic(system: str, user: str) -> str:
+def _call_anthropic(
+    system: str,
+    user: str,
+    *,
+    fast: bool = False,
+    max_tokens: int | None = None,
+) -> str:
     from anthropic import Anthropic
 
-    client = Anthropic(api_key=settings.anthropic_api_key, timeout=120.0)
+    model = settings.anthropic_model_fast if fast else settings.anthropic_model
+    tokens = max_tokens if max_tokens is not None else (4096 if fast else 8192)
+    client = Anthropic(api_key=settings.anthropic_api_key, timeout=90.0 if fast else 120.0)
     response = client.messages.create(
-        model=settings.anthropic_model,
-        max_tokens=16384,
+        model=model,
+        max_tokens=tokens,
         system=system,
         messages=[{"role": "user", "content": user}],
     )

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
-
 from acc_nomad.models import (
     BankCode,
     ProcessExtratoRequest,
@@ -31,70 +29,6 @@ from acc_nomad.services.transaction_utils import dedupe_transactions
 
 class ProcessingError(RuntimeError):
     pass
-
-_TEXT_CHUNK_CHARS = 18_000
-_MAX_LLM_WORKERS = 3
-
-
-def _split_text_for_llm(text: str, max_chars: int = _TEXT_CHUNK_CHARS) -> list[str]:
-    """Divide texto longo em blocos para a LLM, cortando em quebras de linha."""
-    cleaned = text.strip()
-    if len(cleaned) <= max_chars:
-        return [cleaned]
-
-    chunks: list[str] = []
-    start = 0
-    while start < len(cleaned):
-        end = min(start + max_chars, len(cleaned))
-        if end < len(cleaned):
-            break_at = cleaned.rfind("\n", start, end)
-            if break_at > start:
-                end = break_at
-        chunk = cleaned[start:end].strip()
-        if chunk:
-            chunks.append(chunk)
-        start = end if end > start else start + max_chars
-    return chunks or [cleaned[:max_chars]]
-
-
-def _extract_transactions(
-    *,
-    sample_text: str,
-    bank: BankCode,
-    segmento: str | None,
-    instrucao_personalizada: str | None,
-    fornecedores: list[FornecedorMatch],
-    plano_contas: list[dict],
-) -> list[Transaction]:
-    text_parts = _split_text_for_llm(sample_text)
-    if len(text_parts) == 1:
-        return extract_and_classify(
-            sample_text=text_parts[0],
-            bank=bank,
-            segmento=segmento,
-            instrucao_personalizada=instrucao_personalizada,
-            fornecedores=fornecedores,
-            plano_contas=plano_contas,
-        )
-
-    all_transactions: list[Transaction] = []
-    workers = min(_MAX_LLM_WORKERS, len(text_parts))
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        futures = [
-            pool.submit(
-                extract_and_classify,
-                text_part,
-                bank,
-                segmento,
-                instrucao_personalizada,
-                fornecedores,
-                plano_contas,
-            )
-            for text_part in text_parts
-        ]
-        for future in as_completed(futures):
-            all_transactions.extend(future.result())
-    return all_transactions
 
 
 def process_extrato_pdf(
@@ -125,7 +59,7 @@ def process_extrato_pdf(
 
         plano_contas = fetch_plano_contas(request.segmento or "comercio")
 
-        all_transactions = _extract_transactions(
+        all_transactions: list[Transaction] = extract_and_classify(
             sample_text=full_text,
             bank=bank,
             segmento=request.segmento,

@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
+import json
 from datetime import date
 from typing import Any
 
 from acc_nomad.models import BankCode, Transaction, TransactionNature
 from acc_nomad.services.bank_rules import BankRules, get_bank_rules
-from acc_nomad.services.fallback_extractor import extract_fallback
+from acc_nomad.services.fallback_extractor import extract_all_local
 from acc_nomad.services.fornecedor_matcher import FornecedorMatch, apply_fornecedor_categories
-from acc_nomad.services.llm_providers import active_provider_name, generate_json
+from acc_nomad.services.llm_providers import active_provider_name, generate_json, generate_json_fast
 
 DEFAULT_CATEGORIES = [
     ("Fornecedor / Revenda", "custo variável"),
@@ -32,6 +33,8 @@ CATEGORIA_PAI_LABELS = {
     "investimentos": "investimentos",
     "receita": "receita",
 }
+
+FALLBACK_CATEGORY = "Não classificado (fallback)"
 
 EXTRACTION_PROMPT_BASE = """Você é um assistente contábil da ACC/Nomad.
 Extraia lançamentos bancários do texto fornecido e classifique cada um no plano de contas.
@@ -59,7 +62,17 @@ Regras:
 - Não invente lançamentos ausentes no texto
 - category deve ser o nome exato de uma categoria listada acima
 - Retorne APENAS JSON válido (sem markdown). Descrições curtas.
-- Se houver muitos lançamentos, inclua todos em "transactions"
+"""
+
+CLASSIFY_BATCH_PROMPT = """Você classifica lançamentos bancários no plano de contas ({segmento}).
+
+Categorias permitidas:
+{categorias}
+
+Retorne JSON: {{"items": [{{"i": 0, "category": "nome exato"}}, ...]}}
+- i = índice do item na lista enviada
+- category deve ser nome exato de uma categoria acima
+- Apenas JSON, sem markdown
 """
 
 
@@ -95,6 +108,18 @@ def _build_extraction_prompt(
     ) + bank_section
 
 
+def _build_classify_prompt(
+    segmento: str | None,
+    plano_contas: list[dict[str, Any]] | None,
+) -> str:
+    categorias = _format_plano_contas(plano_contas)
+    categorias_txt = "\n".join(f"- {nome} ({pai})" for nome, pai in categorias)
+    return CLASSIFY_BATCH_PROMPT.format(
+        segmento=segmento or "comercio",
+        categorias=categorias_txt,
+    )
+
+
 def _default_receita_category(plano_contas: list[dict[str, Any]] | None) -> str | None:
     if not plano_contas:
         return None
@@ -102,6 +127,10 @@ def _default_receita_category(plano_contas: list[dict[str, Any]] | None) -> str 
         if item.get("categoria_pai") == "receita":
             return item["nome"]
     return None
+
+
+def _needs_classification(tx: Transaction) -> bool:
+    return not tx.category or tx.category == FALLBACK_CATEGORY
 
 
 def extract_and_classify(
@@ -113,13 +142,92 @@ def extract_and_classify(
     plano_contas: list[dict[str, Any]] | None = None,
 ) -> list[Transaction]:
     fornecedores = fornecedores or []
+    receita_default = _default_receita_category(plano_contas)
+
+    transactions = extract_all_local(sample_text, default_category=receita_default)
+    if transactions:
+        transactions = apply_fornecedor_categories(transactions, fornecedores)
+        return _classify_batch(
+            transactions,
+            segmento=segmento,
+            instrucao_personalizada=instrucao_personalizada,
+            plano_contas=plano_contas,
+        )
+
+    if active_provider_name() == "fallback":
+        return []
+
+    return _extract_with_full_llm(
+        sample_text=sample_text,
+        bank=bank,
+        segmento=segmento,
+        instrucao_personalizada=instrucao_personalizada,
+        fornecedores=fornecedores,
+        plano_contas=plano_contas,
+    )
+
+
+def _classify_batch(
+    transactions: list[Transaction],
+    *,
+    segmento: str | None,
+    instrucao_personalizada: str | None,
+    plano_contas: list[dict[str, Any]] | None,
+) -> list[Transaction]:
+    if active_provider_name() == "fallback":
+        return transactions
+
+    pending = [i for i, tx in enumerate(transactions) if _needs_classification(tx)]
+    if not pending:
+        return transactions
+
+    prompt = _build_classify_prompt(segmento, plano_contas)
+    batch_size = 80
+
+    for start in range(0, len(pending), batch_size):
+        batch_indices = pending[start : start + batch_size]
+        payload_items = [
+            {
+                "i": idx,
+                "desc": transactions[idx].description[:100],
+                "nat": transactions[idx].nature.value,
+            }
+            for idx in batch_indices
+        ]
+        user_content = json.dumps(
+            {
+                "instrucao_personalizada": instrucao_personalizada or "nenhuma",
+                "items": payload_items,
+            },
+            ensure_ascii=False,
+        )
+        result = generate_json_fast(prompt, user_content)
+        for item in result.get("items", []):
+            try:
+                idx = int(item["i"])
+                category = str(item["category"]).strip()
+            except (KeyError, TypeError, ValueError):
+                continue
+            if 0 <= idx < len(transactions) and category:
+                tx = transactions[idx]
+                transactions[idx] = tx.model_copy(update={"category": category})
+
+    return transactions
+
+
+def _extract_with_full_llm(
+    *,
+    sample_text: str,
+    bank: BankCode,
+    segmento: str | None,
+    instrucao_personalizada: str | None,
+    fornecedores: list[FornecedorMatch],
+    plano_contas: list[dict[str, Any]] | None,
+) -> list[Transaction]:
+    """Caminho lento — só quando regex não extrai nada (PDF escaneado/imagem)."""
     bank_rules = get_bank_rules(bank or BankCode.UNKNOWN)
     prompt = _build_extraction_prompt(segmento, plano_contas, bank_rules)
     receita_default = _default_receita_category(plano_contas)
-
-    if active_provider_name() == "fallback":
-        txs = extract_fallback(sample_text, default_category=receita_default)
-        return apply_fornecedor_categories(txs, fornecedores)
 
     fornecedores_txt = "\n".join(
         f"- {f.nome} → {f.categoria_sugerida or 'sem categoria'}" for f in fornecedores
@@ -130,10 +238,10 @@ def extract_and_classify(
         f"Segmento: {segmento or 'comercio'}\n"
         f"Instrução personalizada: {instrucao_personalizada or 'nenhuma'}\n\n"
         f"Fornecedores cadastrados:\n{fornecedores_txt}\n\n"
-        f"Texto do extrato:\n{sample_text[:20000]}"
+        f"Texto do extrato:\n{sample_text[:12000]}"
     )
 
-    payload = generate_json(prompt, user_content)
+    payload = generate_json(prompt, user_content, max_tokens=8192)
 
     transactions: list[Transaction] = []
     for item in payload.get("transactions", []):
@@ -145,7 +253,7 @@ def extract_and_classify(
     if transactions:
         return apply_fornecedor_categories(transactions, fornecedores)
 
-    txs = extract_fallback(sample_text, default_category=receita_default)
+    txs = extract_all_local(sample_text, default_category=receita_default)
     return apply_fornecedor_categories(txs, fornecedores)
 
 

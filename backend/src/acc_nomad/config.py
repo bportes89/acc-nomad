@@ -38,6 +38,7 @@ class Settings(BaseSettings):
 
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-sonnet-4-6"
+    anthropic_model_fast: str = "claude-haiku-4-5"
 
     # LLM para classificação: auto | fallback | gemini | groq | openai | anthropic
     llm_provider: str = "auto"
