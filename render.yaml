@@ -1,17 +1,14 @@
 # Render — https://render.com/docs/blueprint-spec
-# Ajuste env vars sensíveis no dashboard (não commitar secrets).
+# OCR (Tesseract) exige runtime Docker — ver backend/Dockerfile
 
 services:
   - type: web
     name: acc-nomad
-    runtime: python
-    rootDir: backend
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn acc_nomad.main:app --host 0.0.0.0 --port $PORT --app-dir src
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
     healthCheckPath: /health
     envVars:
-      - key: PYTHON_VERSION
-        value: "3.12.8"
       - key: LLM_PROVIDER
         value: anthropic
       - key: ANTHROPIC_MODEL_FAST

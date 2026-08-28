@@ -2,16 +2,21 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends curl \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    tesseract-ocr \
+    tesseract-ocr-por \
+    tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/*
+
+ENV TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata
+ENV PYTHONPATH=/app/src
+ENV APP_ENV=production
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src/ ./src/
-
-ENV PYTHONPATH=/app/src
-ENV APP_ENV=production
 
 EXPOSE 8000
 

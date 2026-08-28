@@ -8,7 +8,7 @@ from pathlib import Path
 from acc_nomad.models import BankCode
 from acc_nomad.services.bank_rules import get_bank_rules
 from acc_nomad.services.bradesco_mensal_extractor import extract_bradesco_mensal
-from acc_nomad.services.pdf_analyzer import extract_full_text
+from acc_nomad.services.pdf_analyzer import extract_full_text_smart
 from acc_nomad.services.saldo_validator import validate_saldo
 from acc_nomad.services.transaction_utils import dedupe_transactions
 

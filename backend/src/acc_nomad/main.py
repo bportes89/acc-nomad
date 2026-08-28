@@ -40,11 +40,13 @@ async def root() -> dict[str, str]:
 @app.get("/health")
 async def health() -> dict[str, str | bool]:
     from acc_nomad.services.llm_providers import active_provider_name
+    from acc_nomad.services.pdf_ocr import ocr_available
 
     return {
         "status": "ok",
         "version": __version__,
         "llm_provider": active_provider_name(),
+        "ocr_available": ocr_available(),
         "supabase_configured": bool(
             settings.supabase_url and settings.supabase_service_role_key
         ),

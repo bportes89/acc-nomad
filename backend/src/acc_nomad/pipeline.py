@@ -13,7 +13,8 @@ from acc_nomad.services.bank_detector import detect_bank_from_text
 from acc_nomad.services.bank_rules import get_bank_rules
 from acc_nomad.services.classifier import extract_and_classify
 from acc_nomad.services.organizer import sort_transactions
-from acc_nomad.services.pdf_analyzer import analyze_pdf, extract_full_text
+from acc_nomad.services.pdf_analyzer import analyze_pdf, extract_full_text_smart
+from acc_nomad.services.pdf_ocr import MIN_NATIVE_TEXT_CHARS, is_scanned_pdf, ocr_available
 from acc_nomad.services.fornecedor_matcher import FornecedorMatch, apply_fornecedor_categories
 from acc_nomad.services.reliable_extraction import extract_transactions_local
 from acc_nomad.services.saldo_validator import validate_saldo
@@ -49,7 +50,8 @@ def process_extrato_pdf(
         analysis = analyze_pdf(pdf_bytes)
         bank = detect_bank_from_text(analysis.sample_text)
         bank_rules = get_bank_rules(bank)
-        full_text = extract_full_text(pdf_bytes)
+        text_extraction = extract_full_text_smart(pdf_bytes)
+        full_text = text_extraction.text
 
         raw_fornecedores = fetch_fornecedores(request.empresa_id)
         fornecedores = [
@@ -73,7 +75,18 @@ def process_extrato_pdf(
         ordered = apply_fornecedor_categories(ordered, fornecedores)
 
         if not ordered:
-            if len(full_text.strip()) < 300:
+            if is_scanned_pdf(pdf_bytes) and not text_extraction.used_ocr:
+                if not ocr_available():
+                    raise ProcessingError(
+                        "PDF escaneado ou imagem — texto não selecionável. "
+                        "O servidor ainda não tem OCR (Tesseract) ativo. "
+                        "Baixe o extrato em PDF nativo pelo internet banking."
+                    )
+                raise ProcessingError(
+                    "PDF escaneado — OCR não conseguiu ler o conteúdo. "
+                    "Tente um PDF nativo ou um scan com melhor qualidade."
+                )
+            if len(full_text.strip()) < MIN_NATIVE_TEXT_CHARS:
                 raise ProcessingError(
                     "PDF sem texto selecionável (escaneado ou imagem). "
                     "Baixe o extrato pelo internet banking em PDF nativo, não foto/scan."
@@ -114,7 +127,10 @@ def process_extrato_pdf(
             saldo_final=saldo_result.saldo_final,
             saldo_calculado=saldo_result.saldo_calculado,
             validacao_saldo_ok=saldo_result.ok,
-            validacao_detalhes=saldo_result.to_dict(),
+            validacao_detalhes={
+                **saldo_result.to_dict(),
+                "used_ocr": text_extraction.used_ocr,
+            },
         )
 
         return ProcessExtratoResponse(

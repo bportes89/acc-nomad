@@ -9,7 +9,7 @@ from pathlib import Path
 from acc_nomad.models import BankCode
 from acc_nomad.services.bank_detector import detect_bank_from_text
 from acc_nomad.services.classifier import FALLBACK_CATEGORY, extract_and_classify
-from acc_nomad.services.pdf_analyzer import analyze_pdf, extract_full_text
+from acc_nomad.services.pdf_analyzer import analyze_pdf, extract_full_text_smart
 from acc_nomad.services.reliable_extraction import extract_transactions_local
 from acc_nomad.services.saldo_validator import validate_saldo
 from acc_nomad.services.bank_rules import get_bank_rules
@@ -62,7 +62,7 @@ def run_golive_check(
     bank_rules = get_bank_rules(bank)
 
     t0 = time.perf_counter()
-    full_text = extract_full_text(pdf_bytes)
+    full_text = extract_full_text_smart(pdf_bytes).text
     t1 = time.perf_counter()
 
     local_txs: list = []
