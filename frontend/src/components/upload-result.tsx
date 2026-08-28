@@ -53,6 +53,18 @@ export function UploadResult({
           <p className="mt-3 text-xs text-emerald-700">
             Planilha padrão ACC: PMG + Fluxo de Caixa Aprovado + Resumo por Banco
           </p>
+          <p className="mt-2 text-xs text-amber-800">
+            Próximo passo: abra <strong>Revisão</strong> e confirme os lançamentos. O PMG só
+            considera itens revisados. &quot;Não classificado (fallback)&quot; é categoria
+            provisória — corrija se necessário.
+          </p>
+          {saldoDivergente > 0 && (
+            <p className="mt-2 text-xs text-amber-900">
+              Divergência de saldo: a soma dos lançamentos extraídos não bate com o saldo final
+              do PDF. Veja detalhes no <strong>Dashboard</strong> (badge &quot;Saldo divergente&quot;).
+              Pode faltar movimentação no extrato ou o PDF usar formato ainda não mapeado.
+            </p>
+          )}
         </div>
       </div>
     </div>

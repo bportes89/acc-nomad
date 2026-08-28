@@ -15,7 +15,7 @@ export default async function RevisaoPage() {
       .select("*, empresas(segmento)")
       .eq("revisado", false)
       .order("data", { ascending: true })
-      .limit(100),
+      .limit(500),
     supabase.from("plano_contas").select("*").eq("ativo", true).order("ordem"),
   ]);
 
@@ -30,7 +30,9 @@ export default async function RevisaoPage() {
     <div>
       <h1 className="text-2xl font-bold text-slate-900">Revisão humana</h1>
       <p className="mt-1 text-slate-500">
-        Confirme ou corrija as classificações sugeridas pela IA (feedback loop)
+        Confirme ou corrija as classificações sugeridas pela IA.{" "}
+        <strong>Todo lançamento novo aparece aqui antes de ir para o PMG</strong> — isso é
+        normal. Use &quot;Confirmar&quot; quando a categoria estiver correta.
       </p>
 
       <div className="mt-8">
