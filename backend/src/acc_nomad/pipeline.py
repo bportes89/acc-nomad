@@ -66,6 +66,7 @@ def process_extrato_pdf(
             instrucao_personalizada=request.instrucao_personalizada,
             fornecedores=fornecedores,
             plano_contas=plano_contas,
+            pdf_bytes=pdf_bytes,
         )
 
         ordered = dedupe_transactions(all_transactions)

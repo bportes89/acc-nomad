@@ -141,11 +141,25 @@ def extract_and_classify(
     instrucao_personalizada: str | None = None,
     fornecedores: list[FornecedorMatch] | None = None,
     plano_contas: list[dict[str, Any]] | None = None,
+    pdf_bytes: bytes | None = None,
 ) -> list[Transaction]:
     fornecedores = fornecedores or []
     receita_default = _default_receita_category(plano_contas)
 
-    transactions = extract_all_local(sample_text, default_category=receita_default)
+    transactions: list[Transaction] = []
+    if pdf_bytes and bank == BankCode.BRADESCO:
+        from acc_nomad.services.bradesco_mensal_extractor import (
+            extract_bradesco_mensal,
+            is_bradesco_mensal,
+        )
+
+        if is_bradesco_mensal(sample_text):
+            transactions = extract_bradesco_mensal(
+                pdf_bytes, default_category=receita_default
+            )
+
+    if not transactions:
+        transactions = extract_all_local(sample_text, default_category=receita_default)
     if transactions:
         transactions = apply_fornecedor_categories(transactions, fornecedores)
         transactions = classify_with_rules(transactions, default_receita=receita_default)
