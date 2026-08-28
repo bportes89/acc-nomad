@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { formatUserError } from "@/lib/format-api-error";
 import { createClient } from "@/lib/supabase/client";
 import { REPORT_CATEGORIAS, REPORT_STATUS_LABELS, reportStatusStyle } from "@/lib/reports";
 import type { Empresa, Extrato, ReportErro, ReportErroCategoria } from "@/lib/types";
@@ -68,7 +69,7 @@ export function ReportErroForm({
     });
 
     if (insertError) {
-      setError(insertError.message);
+      setError(formatUserError(insertError.message, "Erro ao enviar report."));
     } else {
       setMessage("Report enviado! Nossa equipe irá analisar.");
       if (!prefill) {

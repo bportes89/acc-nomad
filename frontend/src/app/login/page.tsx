@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { formatUserError } from "@/lib/format-api-error";
 
 function LoginForm() {
   const router = useRouter();
@@ -36,7 +36,7 @@ function LoginForm() {
         options: { emailRedirectTo: redirectTo },
       });
       if (signUpError) {
-        setError(signUpError.message);
+        setError(formatUserError(signUpError.message, "Não foi possível criar a conta."));
         setLoading(false);
         return;
       }
@@ -51,7 +51,7 @@ function LoginForm() {
     });
 
     if (signInError) {
-      setError(signInError.message);
+      setError(formatUserError(signInError.message, "Não foi possível entrar."));
       setLoading(false);
       return;
     }

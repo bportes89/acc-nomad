@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { formatUserError } from "@/lib/format-api-error";
 import { createClient } from "@/lib/supabase/client";
 import type { Empresa, PlanoConta } from "@/lib/types";
 
@@ -62,7 +63,7 @@ export function TesourariaForm({
     });
 
     if (error) {
-      setMessage(error.message);
+      setMessage(formatUserError(error.message, "Erro ao registrar lançamento."));
     } else {
       setDescricao("");
       setValor("");

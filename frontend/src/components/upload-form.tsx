@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Upload } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { formatApiError } from "@/lib/format-api-error";
+import { formatApiError, formatUserError } from "@/lib/format-api-error";
 import { processarExtratoNoBackend } from "@/lib/processar-extrato";
 import {
   exportAccConsolidadoXlsx,
@@ -105,7 +105,10 @@ export function UploadForm({ empresas }: { empresas: Empresa[] }) {
 
       if (extratoError || !extrato) {
         erro += 1;
-        lastError = `Erro ao registrar extrato: ${extratoError?.message}`;
+        lastError = formatUserError(
+          extratoError?.message ?? "",
+          "Erro ao registrar extrato.",
+        );
         setMessage(lastError);
         continue;
       }
@@ -129,8 +132,10 @@ export function UploadForm({ empresas }: { empresas: Empresa[] }) {
           setMessage,
         );
       } catch (err) {
-        const msg =
-          err instanceof Error ? err.message : "Erro ao processar extrato";
+        const msg = formatUserError(
+          err instanceof Error ? err.message : "",
+          "Erro ao processar extrato.",
+        );
         await supabase
           .from("extratos")
           .update({ status: "erro", erro_mensagem: msg })

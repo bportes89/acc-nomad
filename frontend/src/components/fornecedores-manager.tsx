@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { formatUserError } from "@/lib/format-api-error";
 import { createClient } from "@/lib/supabase/client";
 import type { Empresa, Fornecedor, PlanoConta } from "@/lib/types";
 
@@ -50,7 +51,7 @@ export function FornecedoresManager({
     });
 
     if (error) {
-      setMessage(error.message);
+      setMessage(formatUserError(error.message, "Erro ao cadastrar fornecedor."));
     } else {
       setNome("");
       setCategoria("");

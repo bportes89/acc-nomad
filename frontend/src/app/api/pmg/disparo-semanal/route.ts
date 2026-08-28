@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { formatUserError } from "@/lib/format-api-error";
 import { runWeeklyPmgDispatch } from "@/lib/server/pmg-scheduler";
 
 export const maxDuration = 60;
@@ -12,8 +13,10 @@ export async function POST(request: Request) {
     const result = await runWeeklyPmgDispatch({ force, periodo });
     return NextResponse.json(result);
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Erro no disparo semanal";
+    const message = formatUserError(
+      err instanceof Error ? err.message : "",
+      "Erro no disparo semanal.",
+    );
     return NextResponse.json({ error: message }, { status: 422 });
   }
 }

@@ -118,4 +118,6 @@ def process_extrato_pdf(
         raise
     except Exception as exc:
         update_extrato_status(extrato_id, status="erro", erro_mensagem=str(exc))
-        raise ProcessingError(str(exc)) from exc
+        raise ProcessingError(
+            "Erro interno ao processar o extrato. Tente novamente ou abra um report em Suporte."
+        ) from exc

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { formatUserError } from "@/lib/format-api-error";
 import { createClient } from "@/lib/supabase/client";
 
 export default function RecuperarSenhaPage() {
@@ -24,7 +25,7 @@ export default function RecuperarSenhaPage() {
     });
 
     if (resetError) {
-      setError(resetError.message);
+      setError(formatUserError(resetError.message, "Não foi possível enviar o e-mail de recuperação."));
     } else {
       setMessage(
         "Se existir uma conta com este e-mail, você receberá um link para redefinir a senha.",

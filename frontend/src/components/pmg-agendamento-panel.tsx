@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarClock, Play } from "lucide-react";
-import { formatApiError } from "@/lib/format-api-error";
+import { formatApiError, formatUserError } from "@/lib/format-api-error";
 import { createClient } from "@/lib/supabase/client";
 import { DIAS_SEMANA, diaSemanaLabel } from "@/lib/pmg-schedule";
 import type { Empresa, PmgAgendamento } from "@/lib/types";
@@ -47,7 +47,7 @@ export function PmgAgendamentoPanel({
     });
 
     if (error) {
-      setMessage(error.message);
+      setMessage(formatUserError(error.message, "Erro ao salvar agendamento."));
     } else {
       setDestinatario("");
       setMessage("Agendamento semanal salvo!");

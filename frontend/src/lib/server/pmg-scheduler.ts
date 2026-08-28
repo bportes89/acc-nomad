@@ -1,3 +1,4 @@
+import { formatUserError } from "@/lib/format-api-error";
 import { calcularPmg } from "@/lib/pmg";
 import type { Lancamento, PmgResumo, TesourariaLancamento } from "@/lib/types";
 import { enviarPmg, PmgDeliveryError } from "@/lib/server/pmg-delivery";
@@ -51,7 +52,7 @@ async function fetchActiveAgendamentos(diaSemana?: number) {
   }
 
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(formatUserError(error.message, "Erro ao buscar agendamentos."));
   return (data ?? []) as AgendamentoRow[];
 }
 
@@ -86,8 +87,12 @@ async function fetchPmgData(empresaId: string, inicio: string, fim: string) {
       .lte("data", fim),
   ]);
 
-  if (lancamentos.error) throw new Error(lancamentos.error.message);
-  if (tesouraria.error) throw new Error(tesouraria.error.message);
+  if (lancamentos.error) {
+    throw new Error(formatUserError(lancamentos.error.message, "Erro ao buscar lançamentos."));
+  }
+  if (tesouraria.error) {
+    throw new Error(formatUserError(tesouraria.error.message, "Erro ao buscar tesouraria."));
+  }
 
   return {
     lancamentos: (lancamentos.data ?? []) as Lancamento[],

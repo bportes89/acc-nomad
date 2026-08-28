@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { formatUserError } from "@/lib/format-api-error";
 import { enviarPmg, PmgDeliveryError } from "@/lib/server/pmg-delivery";
 import type { PmgResumo } from "@/lib/types";
 
@@ -31,12 +32,13 @@ export async function POST(request: Request) {
 
     return NextResponse.json(result);
   } catch (err) {
-    const message =
+    const raw =
       err instanceof PmgDeliveryError
         ? err.message
         : err instanceof Error
           ? err.message
-          : "Erro ao enviar PMG";
+          : "";
+    const message = formatUserError(raw, "Erro ao enviar PMG.");
 
     return NextResponse.json({ error: message }, { status: 422 });
   }

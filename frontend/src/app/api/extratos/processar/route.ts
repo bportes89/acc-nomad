@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { formatApiError } from "@/lib/format-api-error";
+import { formatApiError, formatUserError } from "@/lib/format-api-error";
 
 export const maxDuration = 60;
 
@@ -39,10 +39,11 @@ export async function POST(request: Request) {
   } catch (err) {
     const msg =
       err instanceof Error && err.name === "TimeoutError"
-        ? "Timeout ao processar (limite Vercel). Recarregue a página e tente de novo — o upload agora vai direto ao Render."
-        : err instanceof Error
-          ? err.message
-          : "Falha de conexão com o backend";
+        ? "Timeout ao processar (limite Vercel). Recarregue a página e tente novamente — o upload vai direto ao Render."
+        : formatUserError(
+            err instanceof Error ? err.message : "",
+            "Falha de conexão com o servidor de processamento.",
+          );
     return NextResponse.json({ error: msg }, { status: 502 });
   }
 }
