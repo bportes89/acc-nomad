@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from acc_nomad.auth import verify_api_secret, verify_api_secret_or_user
 from acc_nomad import __version__
 from acc_nomad.config import settings
 from acc_nomad.models import ProcessExtratoRequest
@@ -29,11 +30,6 @@ app.add_middleware(
 )
 
 
-def verify_api_secret(x_api_secret: str | None = Header(default=None)) -> None:
-    if settings.api_secret and x_api_secret != settings.api_secret:
-        raise HTTPException(status_code=401, detail="API secret inválido")
-
-
 @app.get("/")
 async def root() -> dict[str, str]:
     return {"status": "ok", "docs": "/docs", "health": "/health"}
@@ -53,7 +49,7 @@ async def health() -> dict[str, str | bool]:
     }
 
 
-@app.post("/api/extratos/processar", dependencies=[Depends(verify_api_secret)])
+@app.post("/api/extratos/processar", dependencies=[Depends(verify_api_secret_or_user)])
 async def processar_extrato(
     empresa_id: str = Form(...),
     extrato_id: str = Form(...),

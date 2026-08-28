@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Upload } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { formatApiError } from "@/lib/format-api-error";
+import { processarExtratoNoBackend } from "@/lib/processar-extrato";
 import {
   exportAccConsolidadoXlsx,
   lancamentosToAccRows,
@@ -70,8 +72,16 @@ export function UploadForm({ empresas }: { empresas: Empresa[] }) {
 
     const supabase = createClient();
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      setMessage("Sessão expirada. Faça login novamente.");
+      setLoading(false);
+      return;
+    }
+
+    const userId = session.user.id;
 
     const successIds: string[] = [];
     let ok = 0;
@@ -87,7 +97,7 @@ export function UploadForm({ empresas }: { empresas: Empresa[] }) {
           empresa_id: empresaId,
           nome_arquivo: file.name,
           status: "pendente",
-          uploaded_by: user?.id,
+          uploaded_by: userId,
         })
         .select("id")
         .single();
@@ -109,20 +119,37 @@ export function UploadForm({ empresas }: { empresas: Empresa[] }) {
         formData.append("instrucao_personalizada", empresa.instrucao_personalizada);
       }
 
-      const res = await fetch("/api/extratos/processar", {
-        method: "POST",
-        body: formData,
-      });
+      let res: Response;
+      try {
+        res = await processarExtratoNoBackend(
+          formData,
+          session.access_token,
+          setMessage,
+        );
+      } catch (err) {
+        const msg =
+          err instanceof Error ? err.message : "Erro ao processar extrato";
+        await supabase
+          .from("extratos")
+          .update({ status: "erro", erro_mensagem: msg })
+          .eq("id", extrato.id);
+        erro += 1;
+        setMessage(msg);
+        continue;
+      }
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        const detail = err.error || err.detail || "Erro ao processar extrato";
+        const detail = formatApiError(
+          err.detail ?? err.error,
+          `Erro ao processar extrato (HTTP ${res.status})`,
+        );
         await supabase
           .from("extratos")
           .update({ status: "erro", erro_mensagem: String(detail) })
           .eq("id", extrato.id);
         erro += 1;
-        setMessage(String(detail));
+        setMessage(detail);
         continue;
       }
 
@@ -209,7 +236,7 @@ export function UploadForm({ empresas }: { empresas: Empresa[] }) {
           disabled={loading || !files?.length}
           className="w-full rounded-lg bg-emerald-600 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
         >
-          {loading ? "Processando…" : "Enviar, processar e baixar XLSX"}
+          {loading ? "Processando… (IA + PDF, aguarde)" : "Enviar, processar e baixar XLSX"}
         </button>
 
         {message && (
