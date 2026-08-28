@@ -76,6 +76,7 @@ def run_golive_check(
             bank=bank,
             segmento=segmento,
             plano_contas=None,
+            pdf_bytes=pdf_bytes,
         )
     t3 = time.perf_counter()
 
