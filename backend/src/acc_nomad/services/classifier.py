@@ -109,7 +109,6 @@ def extract_and_classify(
     instrucao_personalizada: str | None = None,
     fornecedores: list[FornecedorMatch] | None = None,
     plano_contas: list[dict[str, Any]] | None = None,
-    bank: BankCode | None = None,
 ) -> list[Transaction]:
     fornecedores = fornecedores or []
     bank_rules = get_bank_rules(bank or BankCode.UNKNOWN)
