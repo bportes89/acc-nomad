@@ -8,7 +8,8 @@ from datetime import date
 from acc_nomad.models import Transaction, TransactionNature
 
 DATE_RE = re.compile(r"\b(\d{2})\s*/\s*(\d{2})\s*/\s*(\d{4})\b")
-DATE_LINE_RE = re.compile(r"^(\d{2})\s*/\s*(\d{2})\s*/\s*(\d{4})\s*(.*)$")
+DATE_SHORT_RE = re.compile(r"\b(\d{2})\s*/\s*(\d{2})\s*/\s*(\d{2})\b")
+DATE_LINE_RE = re.compile(r"^(\d{2})\s*/\s*(\d{2})\s*/\s*(\d{2,4})\s*(.*)$")
 AMOUNT_LINE_RE = re.compile(
     r"^(\d{1,3}(?:\.\d{3})*,\d{2})\s*([CD])\s*$",
     re.IGNORECASE,
@@ -22,6 +23,19 @@ DATE_ONLY_RE = re.compile(r"^(\d{2})\s*/\s*(\d{2})\s*/\s*(\d{4})$")
 RS_AMOUNT_RE = re.compile(r"R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2})")
 MP_ROW_RE = re.compile(
     r"^(\d{2}/\d{2}/\d{4})\s+(.+?)\s+(-?\s*R\$\s*\d{1,3}(?:\.\d{3})*,\d{2})\s*$"
+)
+# Unicredi / Sicredi — linha única: data + histórico + valor C/D [+ saldo]
+COOP_ROW_RE = re.compile(
+    r"^(\d{2}/\d{2}/\d{2,4})\s+(.+?)\s+(\d{1,3}(?:\.\d{3})*,\d{2})\s*([CD])"
+    r"(?:\s+\d{1,3}(?:\.\d{3})*,\d{2}\s*[CD])?\s*$",
+    re.IGNORECASE,
+)
+COOP_SIGNED_RE = re.compile(
+    r"^(\d{2}/\d{2}/\d{2,4})\s+(.+?)\s+([+-])\s*(\d{1,3}(?:\.\d{3})*,\d{2})\s*$",
+)
+AMOUNT_HINT_RE = re.compile(
+    r"(\d{1,3}(?:\.\d{3})*,\d{2})\s*[CD]?|R\$\s*\d|^\+\s*\d|^\-\s*\d",
+    re.IGNORECASE,
 )
 
 DEBIT_HINTS = (
@@ -119,6 +133,7 @@ def extract_all_local(
 
     for extractor in (
         extract_fallback,
+        _extract_single_line_rows,
         _extract_rs_table,
         _extract_mercado_pago,
     ):
@@ -129,15 +144,89 @@ def extract_all_local(
     return merged
 
 
+def filter_transaction_candidate_lines(text: str, *, max_lines: int = 800) -> str:
+    """Linhas com data + valor — compacta texto para fallback LLM."""
+    lines: list[str] = []
+    for raw in text.splitlines():
+        line = raw.strip()
+        if len(line) < 8:
+            continue
+        has_date = DATE_RE.search(line) or DATE_SHORT_RE.search(line)
+        if has_date and (AMOUNT_HINT_RE.search(line) or RS_AMOUNT_RE.search(line)):
+            lines.append(line)
+        if len(lines) >= max_lines:
+            break
+    return "\n".join(lines)
+
+
+def _parse_date_parts(day: str, month: str, year: str) -> date | None:
+    try:
+        y = int(year)
+        if y < 100:
+            y += 2000 if y < 70 else 1900
+        return date(y, int(month), int(day))
+    except ValueError:
+        return None
+
+
+def _extract_single_line_rows(
+    sample_text: str,
+    *,
+    default_category: str | None = None,
+) -> list[Transaction]:
+    """Cooperativas (Unicredi, Sicredi): data + histórico + valor na mesma linha."""
+    transactions: list[Transaction] = []
+
+    for line in sample_text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+
+        match = COOP_ROW_RE.match(line)
+        if match:
+            date_str, desc, raw_amount, flag = match.groups()
+            parts = date_str.split("/")
+            if len(parts) != 3:
+                continue
+            tx_date = _parse_date_parts(parts[0], parts[1], parts[2])
+            if not tx_date:
+                continue
+            desc = re.sub(r"\s{2,}", " ", desc).strip()
+            if _should_skip(desc, desc.upper()):
+                continue
+            tx = _build_transaction(tx_date, desc, raw_amount, flag, default_category)
+            if tx:
+                transactions.append(tx)
+            continue
+
+        signed = COOP_SIGNED_RE.match(line)
+        if signed:
+            date_str, desc, sign, raw_amount = signed.groups()
+            parts = date_str.split("/")
+            if len(parts) != 3:
+                continue
+            tx_date = _parse_date_parts(parts[0], parts[1], parts[2])
+            if not tx_date:
+                continue
+            flag = "C" if sign == "+" else "D"
+            desc = re.sub(r"\s{2,}", " ", desc).strip()
+            if _should_skip(desc, desc.upper()):
+                continue
+            tx = _build_transaction(tx_date, desc, raw_amount, flag, default_category)
+            if tx:
+                transactions.append(tx)
+
+    return transactions
+
+
 def _parse_date_line(line: str) -> tuple[date | None, str]:
     match = DATE_LINE_RE.match(line.strip())
     if not match:
         return None, line
 
     day, month, year, tail = match.groups()
-    try:
-        parsed = date(int(year), int(month), int(day))
-    except ValueError:
+    parsed = _parse_date_parts(day, month, year)
+    if parsed is None:
         return None, line
     return parsed, tail.strip()
 

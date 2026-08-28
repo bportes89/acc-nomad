@@ -8,7 +8,7 @@ from typing import Any
 
 from acc_nomad.models import BankCode, Transaction, TransactionNature
 from acc_nomad.services.bank_rules import BankRules, get_bank_rules
-from acc_nomad.services.fallback_extractor import extract_all_local
+from acc_nomad.services.fallback_extractor import extract_all_local, filter_transaction_candidate_lines
 from acc_nomad.services.fornecedor_matcher import FornecedorMatch, apply_fornecedor_categories
 from acc_nomad.services.llm_providers import active_provider_name, generate_json, generate_json_fast
 from acc_nomad.services.rule_classifier import classify_with_rules
@@ -235,12 +235,15 @@ def _extract_with_full_llm(
         f"- {f.nome} → {f.categoria_sugerida or 'sem categoria'}" for f in fornecedores
     ) or "Nenhum fornecedor cadastrado."
 
+    compact = filter_transaction_candidate_lines(sample_text)
+    text_for_llm = compact if len(compact) >= 80 else sample_text[:25000]
+
     user_content = (
         f"Banco: {bank.value}\n"
         f"Segmento: {segmento or 'comercio'}\n"
         f"Instrução personalizada: {instrucao_personalizada or 'nenhuma'}\n\n"
         f"Fornecedores cadastrados:\n{fornecedores_txt}\n\n"
-        f"Texto do extrato:\n{sample_text[:12000]}"
+        f"Texto do extrato:\n{text_for_llm[:25000]}"
     )
 
     payload = generate_json(prompt, user_content, max_tokens=8192)

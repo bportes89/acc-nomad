@@ -73,9 +73,14 @@ def process_extrato_pdf(
         ordered = apply_fornecedor_categories(ordered, fornecedores)
 
         if not ordered:
+            if len(full_text.strip()) < 300:
+                raise ProcessingError(
+                    "PDF sem texto selecionável (escaneado ou imagem). "
+                    "Baixe o extrato pelo internet banking em PDF nativo, não foto/scan."
+                )
             raise ProcessingError(
-                "Nenhum lançamento extraído do PDF. Verifique o arquivo ou configure "
-                "ANTHROPIC_API_KEY com LLM_PROVIDER=anthropic no backend (Render)."
+                f"Nenhum lançamento extraído do PDF (banco detectado: {bank.value}). "
+                "Formato ainda não reconhecido — abra Suporte e anexe o arquivo para análise."
             )
 
         saldo_result = validate_saldo(full_text, ordered, bank_rules)
