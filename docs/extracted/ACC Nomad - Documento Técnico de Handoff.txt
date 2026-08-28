@@ -1,0 +1,139 @@
+ACC/Nomad — Documento Técnico de Handoff
+Guia de onboarding para novo mantenedor. Última atualização: 2026-08-21. Objetivo: entender o projeto, o que já funciona, o que falta, e como operar — sem depender de conhecimento prévio.
+1. O que é o projeto
+Cliente: Osvaldo e Nahim — ACC (Automação de Controle Contábil).
+Sigla interna: PRJ-020 · Produto: Nomad ·
+Status: ~90% concluído (operação assistida).
+Objetivo de negócio: analisar extratos bancários em PDF (diferentes bancos, formatos e estruturas visuais), extrair as movimentações, classificar por plano de contas e entregar relatórios gerenciais (PMG), substituindo planilhas manuais.
+Classificação dos lançamentos: por plano de contas adaptado por segmento (comércio, saúde, agro, serviços), com revisão humana obrigatória no início (feedback loop).
+Público-alvo: empresas do Simples Nacional, pequenos comércios, clínicas e autônomos.
+Escala alvo: ~400 documentos/mês para ~100 clientes.
+2. Arquitetura geral
+2.1 Workflow n8n (núcleo do sistema)
+Detecção de banco via GPT-4o-mini (OpenAI) com prompt estrutural.
+Regras de negócio: ACC-001 (detecção de banco por prompt) · ACC-002 (tesouraria).
+3. Fluxo de processamento (pipeline)
+Upload — o usuário envia 1+ PDFs de extrato no dashboard Lovable (Nomad).
+Webhook — o Lovable dispara o workflow no n8n.
+Identificação do banco — n8n (Switch Node) + OpenAI (GPT-4o-mini) identificam o banco emissor e roteiam o caminho correto.
+Análise visual (PDFlib) — extrai coordenadas, cores e colunas para distinguir crédito/débito (varia por banco).
+Chunking — extratos grandes são divididos em chunks, sempre acompanhados da primeira página (contexto).
+Extração e classificação (Claude) — extrai lançamentos e classifica por plano de contas (instrução personalizada opcional).
+Organização — nó Code reorganiza em ordem cronológica (ex.: Itaú vem em ordem decrescente).
+Persistência — dados salvos no Supabase (via Lovable).
+Entrega — relatório PMG gerado; exportação “Fluxo de Caixa Aprovado” replica no modelo de planilha do cliente.
+Revisão humana — classificação validada (essencial no início; alimenta o feedback loop).
+4. O que funciona hoje (implementado)
+Ingestão de extrato PDF multi-banco, com switch por banco.
+Identificação automática do banco emissor (OpenAI GPT-4o-mini, prompt estrutural).
+Análise visual (PDFlib) para crédito/débito em formatos variados (sinal, letra C/D, cor, colunas).
+Extração e classificação de lançamentos (Claude) por plano de contas.
+Divisão em chunks (+ primeira página) para extratos grandes.
+Ordenação cronológica por banco (reorganiza a ordem decrescente do Itaú).
+Persistência no Supabase via Lovable (deleção espelhada quando o cliente deleta).
+Relatório PMG (Painel de Metas Gerenciais).
+Exportação “Fluxo de Caixa Aprovado” no modelo do cliente.
+Report de erro (Ticketed Support) em planilha.
+Login de usuários com senha criptografada + recuperação de senha.
+5. O que NÃO funciona / pendências técnicas
+Pendências — Tesouraria (em andamento):
+6. Requisitos de negócio & critérios de aprovação
+6.1 Requisitos funcionais (acordados/pendentes)
+6.2 Critérios de aprovação (definição de pronto)
+Classificações da IA sempre passam por revisão humana (feedback loop).
+Relatório PMG íntegro: cross-check com cálculo manual.
+Entrega (WhatsApp/Email) com confirmação rastreável.
+Conformidade LGPD na proteção de dados financeiros.
+Nenhuma mudança de metodologia sobe sem validação prévia.
+7. Onde está cada coisa
+8. Entrega / canais de saída (resumo)
+Não há API pública de entrega. A saída do sistema ocorre pelos canais abaixo.
+Dados (extratos e lançamentos) persistidos no Supabase, com acesso via Lovable.
+9. Glossário (taxonomia do domínio)
+10. Como operar (roteiro rápido)
+Antes de mexer em sistema externo: ler a documentação da integração e confirmar o ambiente (EasyPanel = produção).
+Após reinício/rebuild do servidor: verificar se a PDFlib ainda está instalada; se removida, reinstalar via tutorial do handoff.
+Testar ingestão: enviar um extrato pelo dashboard Lovable e acompanhar a execução no n8n.
+Deploy/edição de workflow: sempre backup (exportar JSON) antes → editar → salvar → reler o workflow para confirmar o estado real.
+Debug: abrir a execução com falha e ler o output de cada nó (não só o último); o erro costuma estar no nó HTTP do Claude — copiar o JSON de entrada e o de saída e comparar.
+Monitorar o saldo de créditos de análise (não deixar zerar) e os custos na planilha.
+Confirmação: toda mudança em produção exige prova do efeito esperado (reler o estado real, não confiar na memória).
+Fontes: gravação Fireflies “Handoff ACC” (Paschoim) + docs de handoff revisados em 20/08/2026. Consolidado em documento único por Daedalus em 21/08/2026.
+[TABLE]
+Camada | Onde | Função
+Dashboard (frontend) | Lovable — Dashboard Nomad | Envio de extrato, report de erro, login (gmail da tec)
+Orquestração | n8n (EasyPanel) | Webhook → switch por banco → análise → organização
+Análise visual do PDF | PDFlib (biblioteca no servidor) | Coordenadas, cores e colunas (crédito × débito)
+Identificação do banco | OpenAI (GPT-4o-mini) | Nome do banco antes da análise
+Análise do extrato | Claude | Extração e classificação dos lançamentos
+Banco de dados | Supabase (via Lovable) | Extratos e dados persistidos
+Servidor | EasyPanel | Hospedagem do n8n
+[TABLE]
+# | Nome | ID | Papel
+WF1 | ACC automacao v4 | Iud8yMfy7b9M0bLK | Recebe PDF (webhook), identifica banco (switch), análise (OpenAI + PDFlib + Claude), organiza em ordem cronológica e devolve ao Lovable/Supabase. 29 nós, versão bb01979b.
+[TABLE]
+# | Problema | Impacto | Responsável
+P1 | Precisão da classificação (Claude) abaixo do target | Alto — qualidade do PMG | João Trevisol (revisar métricas + plano)
+P2 | Integrações pendentes (bloqueadas por EBI) | Alto | Confirmar com Paschoim
+P3 | PDFlib não é nativa do n8n — rebuild do servidor remove | Alto — automação para | João (reinstalar via tutorial)
+P4 | Testes de carga/performance (400 docs/mês, 100 clientes) | Médio | João (plano progressivo)
+P5 | Documentação de workflows n8n (entradas/saídas/deps/env) | Médio | João (mapear workflows)
+P6 | Tratamento de erros e resiliência (retry, DLQ, alertas) | Médio | João (graceful degradation)
+P7 | Cobertura de formatos bancários na validação de entrada | Médio | QA (ampliar cobertura)
+P8 | Rastreabilidade de entrega WhatsApp/Email (PMG) | Médio | QA (verificar confirmação)
+P9 | Conformidade LGPD (dados financeiros) | Médio | QA (auditar)
+[TABLE]
+Item | Status
+Google Sheet template (base XLSX Osvaldo) | ⬜ pendente
+Nó n8n “Processa Tesouraria” | ⬜ pendente
+Campo origem: BANCO\|TESOURARIA no output | ⬜ pendente
+Tabela tesouraria_lancamentos no Supabase | ⬜ pendente
+Verificar RLS Supabase (empresa_id) | ⬜ pendente
+Formulário Lovable (fase 2) | ⬜ pendente
+[TABLE]
+Requisito | Detalhe | Critério de aceite
+Tesouraria (caixa físico) | Dinheiro em espécie fora do extrato: Google Sheets (MVP) → nó n8n “Processa Tesouraria” → formulário Lovable (fase 2) | Lançamento com origem BANCO\|TESOURARIA; troco tratado como SAÍDA
+Plano de contas por segmento | Categorias adaptadas (comércio, saúde, agro, serviços) | Lançamento classificado na categoria correta
+Instrução personalizada | Dashboard permite instrução extra à análise | Instrução refletida na classificação
+Escala | 400 documentos/mês, 100 clientes | Processamento estável no volume alvo
+Onboarding de cliente       Saldos finais e iniciais corretos | CNPJ, fornecedores, plano de contas, baseline, revisão humana | Nova empresa operando com revisão inicial       Os saldos finais e iniciais devem ser compatíveis com os extratos
+[TABLE]
+Item | Local
+Workflow n8n | EasyPanel — “ACC automacao v4” (ID Iud8yMfy7b9M0bLK, 29 nós)
+Dashboard | Lovable — Dashboard Nomad (login com gmail da tec)
+Banco de dados | Supabase — via Lovable (“More → Database”)
+PDFlib | Servidor EasyPanel (instalada manualmente; não nativa)
+Planilhas (custos, Ticketed Support) | Pasta do projeto no Drive — ACC (PROJETOS ATIVOS)
+QA docs (Quality Gate, Matriz, Estratégia) | Drive → QA-ACC/
+Gravação do handoff | Fireflies — https://app.fireflies.ai/view/01KY89SRR2VQ8S20K7JKTGQGMM
+Dossiê técnico do cliente | Desatualizado — usar este documento + gravação
+[TABLE]
+Recurso | Método/Meio | Obs
+Relatório PMG | Dashboard Lovable / WhatsApp / Email | Principal entregável
+Fluxo de Caixa Aprovado | Exportação → modelo de planilha do cliente | Replica dados no padrão do cliente
+Report de erro | Dashboard → planilha Ticketed Support | —
+[TABLE]
+Termo | Significado
+ACC | Automação de Controle Contábil (empresa cliente + nome da plataforma)
+Nomad | Produto desenvolvido para a ACC: plataforma de controle contábil
+PMG | Painel de Metas Gerenciais — relatório gerencial (principal entregável)
+PDFlib | Biblioteca Python de análise visual do PDF (coordenadas/cores/colunas)
+n8n | Orquestrador de workflows (webhook → switch por banco → análise)
+OpenAI | Modelo que identifica o nome do banco antes da análise
+Claude | Modelo que extrai e classifica os lançamentos
+Supabase | Banco de dados (via Lovable)
+EasyPanel | Servidor que hospeda o n8n
+Lovable | Plataforma no-code do Dashboard Nomad (frontend + banco)
+Chunks | Divisão de arquivos grandes (+ primeira página) antes de enviar à IA
+Webhook | Endpoint HTTP que dispara o workflow no n8n
+Ticketed Support | Planilha de reports de erro enviados pelos clientes
+Extrato bancário | Documento (PDF/CSV/OFX) com histórico de movimentações
+Lançamento | Registro individual de movimentação (débito/crédito)
+Categorização | Classificação do lançamento em categoria contábil
+Plano de contas | Estrutura hierárquica de categorias (adaptada por segmento)
+Fornecedor | Entidade que recebe pagamentos; cadastro melhora precisão
+Revisão humana | Validação manual das classificações da IA
+Feedback loop | IA classifica → humano corrige → correções realimentam o modelo
+Simples Nacional | Regime tributário do público-alvo (micro/pequenas empresas)
+EBI | Evidence Before Implementation — validação de schema antes de integrar
+LGPD | Lei Geral de Proteção de Dados

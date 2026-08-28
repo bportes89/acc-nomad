@@ -1,0 +1,647 @@
+IDEIA
+IDEIA: Automação que recebe vários extratos bancários em PDF, consolida, coloca num padrão financeiro e clusteriza em tipos de custo de acordo com o texto.
+Plano de contas bem enxutos para simplificação de leitura e acessibilidade ao usuário final
+FLUXOGRAMA e DÚVIDAS
+Fluxograma Funcional Inicial (esqueleto simplificado)
+Entradas:
+Extratos bancários PDF (vários bancos) enviados por usuário (financeiro do cliente).
+Etapas:
+Upload dos arquivos PDF em repositório (Google Drive / plataforma).
+Processamento automático (IDP + OCR) dos PDFs → extração dos lançamentos bancários.
+Clusterização/categorização automática (NLP) dos lançamentos conforme plano de contas.
+Exibição do resultado para validação por responsável financeiro (“Só confirmar/ajustar categorias?”).
+Exportação dos dados estruturados para planilha/dashboard interno.
+Envio automático de relatórios consolidado (WhatsApp/email/app).
+Saídas:
+Planilha estruturada por conta/empresa/semana.
+Relatório PMG e alertas para o gestor.
+Link: https://miro.com/app/board/uXjVJpIwas4=/
+—-
+Lista de Dúvidas Técnicas, Restrições & Regras Obscuras
+Sobre dados e formatos:
+Os extratos são sempre fornecidos em PDF? Algum banco só disponibiliza outro formato?
+Válido somente para: PDF ou Excel
+Temos planilha modelo para estruturação dos dados bancários?
+Sim temos, planos de conta: Varejo/Comércio
+Existe padrão de layout entre os bancos? (Identificação das colunas, datas, descrições dos lançamentos)
+Principais bancos: BB, Sicoob, Bradesco, Sicredi, Basa, Santander, Itaú
+Há extratos multiempresa ou conta conjunta?
+Primeiro momento: Não recebemos extratos de vários CNPJs. Recebemos todos os extratos do mesmo CNPJ.
+Sobre plano de contas e categorização:
+O plano de contas é único para todas as empresas? Quantos planos diferentes precisam ser parametrizados?
+Não é único, temos essas categorias de planos, priorizadas:
+- COMÉRCIO/VAREJO (lojinhas e semelhantes)
+- PRESTADOR DE SERVIÇOS (adv, contador, arquiteto...)
+- AGRO (pecuária, agricultura, transporte)
+- SAÚDE (Hospitais e clínicas)
+- GASTRONOMIA
+- SUPERMERCADOS
+- ENG. CIVIL
+- HOTELARIA
+- DISTRIBUIDORAS
+Quais regras de categorização automática já são conhecidas? Existem exceções (ex: Uber = combustível/correio… existe lógica clara?)
+Será classificada em função do destino do valor, bem como é usada via de regra na ciência da contabilidade e cadastro de fornecedores, em casos de indefinição/incerteza permitimos ao usuário que indique o destino.
+Alguma categoria exige input sempre manual?
+Simplificação de PDV - ACC IA para registro da venda em espécie via Whatsapp
+Existe limite de contas ou categorias por empresa?
+Não
+Sobre fluxos e validação:
+Quem valida efetivamente as classificações sugeridas pela IA?
+Osvaldo
+Sobre integrações futuras:
+O Excel continuará sendo insumo obrigatório ou o sistema próprio já substituirá já na 1a versão?
+O excel “paralelo” de fluxograma do cliente entra em desuso após implementação do ACC
+Sobre entregáveis:
+O relatório semanal será sempre igual ao template do PMG apresentado ou será customizável?
+Primeiro momento: Sempre padrão (pagamentos de fornecedor/revenda, variável, fixo, juros, investimentos)
+Qual o canal INICIAL obrigatório de retorno do relatório? (WhatsApp, E-mail, outro?)
+Whatsapp e Email
+Restrições:
+Há restrições de LGPD/dados sensíveis (externos)?
+Atria acionar DPO para garantir os termos de uso
+Existe problema em processar extratos de pessoas físicas misturados ao de PJ?
+Primeiro momento: Não permitir extrato PF nem Cartão de Crédito PF
+Segundo momento: Debulhar apenas extrato de cartão de crédito
+ELEMENTOS ENVOLVIDOS
+2. Mapeamento de Elementos Envolvidos
+Dados/Sistemas:
+Extratos bancários (PDF, potencial para físico no futuro).
+Planilha fluxo de caixa atual (Excel).
+Pessoas (do cliente):
+Financeiro/Contas a pagar e receber (responsável pelo upload/validação).
+Gestores e sócios (recebem relatórios).
+Consultores internos (Javorski, Marlon, Nahim).
+Envolvidos diret[os]:
+Analista financeiro
+Consultoria Javorski
+ Indiret[os]:
+Sócios/gestores
+Time comercial (vendas do sistema)
+Relação das Pessoas do Cliente a Acionar (para dúvidas específicas)
+Responsável Financeiro/Javorski (Nahim Amud ou Marlon): Parametrização do plano de contas, entendimento das exceções, mapping das rotinas operacionais.
+Gestor TI ou Administrador Bancário (Na empresa do cliente): Coleta de exemplos de extratos, explicação de limitações específicas de bancos.
+Consultores de campo (quem implementa o fluxo nas empresas clientes): Validar rotinas reais/volume de dados/multicontas.
+Sócios/Decisores (Osvaldo Junior, sócios das empresas clientes): Aprovação de hipóteses de customização/canais/requisitos futuros.
+ACESSOS
+Número de Whatsapp:
+Atria Compra
+Email para disparos:
+Atria criar um Gmail provisório
+Modelo de Preenchimento plano de contas VAREJO/COMÉRCIO:
+https://docs.google.com/spreadsheets/d/1G5dxzzK_IOf5Nv8FrRqKjp76vAu7NyJn/edit?usp=sharing&ouid=103478392286045904329&rtpof=true&sd=true
+Modelo de Cadastro de Fornecedores/Parceiros:
+Cadastro de Fornecedor-Parceiro.xlsx
+Modelo de relatório semanal PMG (pagamentos de fornecedor/revenda, variável, fixo, juros, investimentos)
+PMG.xlsx
+Resultados-Chave
+INTERESSE: Automação que recebe vários extratos bancários em PDF, consolida, coloca num padrão financeiro e clusteriza em tipos de custo de acordo com o texto.
+RESULTADOS-CHAVE (KRs)
+Projeto: ACC — Automação Contábil e Financeira com IA
+O1-KR1 — Engine de Extração (OCR/IDP) padronizada por banco
+Descrição
+Criar o pipeline de leitura dos PDFs, identificar layout de cada banco (BB, Bradesco, Santander, Sicredi, Sicoob, Basa), extrair colunas e normalizar datas, saldos e lançamentos.
+Dependências
+Nenhuma — é o primeiro KR.
+Requer apenas acesso aos exemplos de extrato.
+Necessidades Técnicas
+IDP configurado
+Regras de mapeamento por banco
+Teste com PDFs reais
+Regras de normalização (datas, múltiplas contas, crédito/debito)
+Pessoas Envolvidas
+Osvaldo/Nahim → envio de mais exemplos de extrato
+ Justificativa: necessário para treinar o IDP nas variações reais.
+O2-KR2 — Motor de ETL para padrão ACC (Comércio/Varejo primeiro)
+Descrição
+Transformar lançamentos brutos em um padrão ACC: data, descrição, valor, natureza, categoria pai, conta origem.
+Dependências
+Depende do KR1 (extração pronta)
+Necessidades Técnicas
+Regras de normalização
+Regras para múltiplas contas/carteiras
+Seleção do plano de contas inicial (Varejo)
+Pessoas Envolvidas
+Osvaldo → validação do padrão
+ Justificativa: conhece a estrutura operacional e o plano real
+O3-KR3 — Módulo de Categorização via NLP (Clusterizador de Gastos)
+Descrição
+Criar modelo NLP que classifica automaticamente entradas/saídas com base em regras contábeis e nos planos de contas.
+Dependências
+KR2 (dados já normalizados)
+Necessidades Técnicas
+Modelos NLP (OpenAI/Gemini)
+Regras estáticas (Uber = Transporte, Lava Jato = Veículo etc.)
+Integração com cadastro de fornecedores
+Plasticidade (feedback humano para treinar)
+Pessoas Envolvidas
+Osvaldo, Nahim, Marlon (validação dos primeiros clusters)
+ Justificativa: validar 1º ciclo de aprendizado, corrigir categorias e melhorar acurácia*
+O4-KR4 — Painel de Validação Interna ACC (Feedback da IA)
+📌 Descrição
+Criar uma tela/lista onde ACC revisa as classificações da IA e confirma ou ajusta.
+🔗 Dependências
+KR3
+🛠️ Necessidades Técnicas
+Interface de validação
+Mecanismo de feedback para re-treino
+Registro de acertos/erros por categoria
+Pessoas Envolvidas
+Osvaldo / Nahim
+ Justificativa: validar inteligência do sistema antes de liberar ao usuário final*
+O5-KR5 — Módulo de Setup Inicial (Tipo de Empresa + Cadastro de Fornecedores)
+Descrição
+Criar um onboarding simples onde o usuário informa:
+Tipo da empresa (varejo/agro/saúde/serviços…)
+Cadastro básico de fornecedores/parceiros
+Dependências
+Independe da IA — pode ser feito em paralelo
+Recomendado executar antes do KR3
+Necessidades Técnicas
+Tabela de fornecedores
+API de cadastro
+Associação telefone fornecedor → categoria sugerida
+Pessoas Envolvidas
+Osvaldo → fornecer lista base de fornecedores
+ Justificativa: já possui base histórica ampla para alimentar o modelo*
+O6-KR6 — Módulo de Lançamentos via WhatsApp (PDV / vendas em espécie)
+Descrição
+Permitir usuários registrarem vendas manuais (“vendi 200 reais no dinheiro”) por áudio/texto no WhatsApp.
+Dependências
+KR5 (cadastro)
+KR3 (entendimento da IA) — parcial
+KR1/KR2 não são necessários
+Necessidades Técnicas
+Integração WhatsApp
+Classificador de áudio/texto
+Identificação por número de telefone
+Regras por centro de custo
+Pessoas Envolvidas
+Osvaldo → regras de uso
+Usuários finais ACC → testes iniciais
+ Justificativa: garantir que a interpretação das mensagens está correta*
+O7-KR7 — Geração Automática do Relatório PMG
+Descrição
+Gerar relatório semanal consolidado:
+Custo variável
+Custo fixo
+Juros
+Investimentos
+Fornecedor/revenda
+Dependências
+KR3 e KR4 (dados categorizados e validados)
+Necessidades Técnicas
+Template PMG
+Motor de agregação
+Cálculos automáticos
+Ajustes por tipo de empresa no futuro
+Pessoas Envolvidas
+Osvaldo/Nahim
+ Justificativa: revisar se o relatório segue exatamente a “linguagem ACC”*
+O8-KR8 — Disparo automático semanal (WhatsApp + E-mail)
+Descrição
+Enviar relatório final para cliente via WhatsApp e e-mail, registrar histórico e possibilitar rastreio interno.
+Dependências
+KR7
+Necessidades Técnicas
+Meta API (WhatsApp)
+SMTP ou SendGrid
+Painel de histórico de envios
+Logs para auditoria
+Pessoas Envolvidas
+ACC
+ Justificativa: definir textos padrão e periodicidade*
+O9-KR9 — Regras de LGPD + Termos de Uso (via DPO)
+Descrição
+Definir escopo de dados sensíveis e criar termos de uso apropriados para o sistema.
+Dependências
+Nenhuma — pode correr em paralelo aos demais
+Necessidades Técnicas
+Orientação do DPO (João Lucas)
+Termos para upload de extratos bancários
+Declaração de não aceitação de extratos PF
+Políticas de descarte seguro
+Pessoas Envolvidas
+João Lucas — DPO Atria
+ Justificativa: requisito de compliance e segurança*
+Tarefas
+Link Planilha interna de tarefas: Tarefas ACC
+É o “berço” das tarefas, elas são esboçadas e revisadas nessa tabela antes de irem para execução nos quadros de acompanhamento :
+Milestones
+Aqui se cruzam Objetivos e Prazos:
+Imagem (Gantt):
+Meta Acompanhamento:
+Meta Acompanhamento:
+Reunião de Kickoff
+Data: 13/11/2025 - 17:00
+Link Gravação: https://app.fireflies.ai/view/ATRIA-e-ACC-JAWORSKI-Mapeamento-de-IA::01K9DHKBCAJC5YV6FH4GGECSBW
+Reunião de Aprofundamento técnico
+Data: 17/11/2025 - 16:00
+Link Gravação: https://app.fireflies.ai/view/Aprofundamento-T-cnico-IA-na-ACC::01K9ZS8HE75N9WFRSVHK59V0JM
+Aprofundamento com cliente I (Regras de negócio e Fluxograma)
+Data: 21/11/2025 - 16:00
+Link Gravação: https://app.fireflies.ai/view/01KA9YDZX25YVHY7589FWB62KM
+Reunião interna de planejamento I (Dossiê + Criação Fluxograma)
+Data: 25/11/2025 - 14:20
+Link Gravação: https://app.fireflies.ai/view/ACC-ATRIA::01KAXYQBZR7N5Q34Z0TKA96YF
+Aprofundamento com cliente II (Priorização de KRs)
+Data: 26/11/2025 - 12:00
+Link Gravação: https://app.fireflies.ai/view/01KB0B15P6XET9F8DX7XG45G8W
+Reunião interna de planejamento II (KRs)
+Data: 02/12/2025 - 14:00
+Link Gravação: https://app.fireflies.ai/view/01KBC3CP54B6Z61YZ0MM5WE9KG
+Reunião interna de planejamento III (Tarefas)
+Data: 04/12/2025 - 16:03
+Link Gravação: https://app.fireflies.ai/view/01KBNBYN713K3CJZ0F96497F55
+Aprofundamento com cliente III (Apresentação do quadro)
+Data: 05/12/2025 - 16:00
+Link Gravação: https://app.fireflies.ai/view/01KBC85KG899WAQVQ42F7CWMZS
+Reunião interna de planejamento IV (Alocação)
+Data: 12/12/2025 - 16:00
+Link Gravação: https://app.fireflies.ai/view/Semanal-ACC-e-ATRIA::01KBQY817EB3MNWGZR667KE7QK
+Recorrências:
+Semanal com cliente I
+Data: Nov 26 2025, 12:00 PM
+Link Gravação: https://app.fireflies.ai/view/Semanal-de-gest-o-ACC-e-ATRIA::01KB0B15P6XET9F8DX7XG45G8W
+Resumo do discutido:
+Objetivo discutido:
+Criar uma automação para consolidar extratos bancários em PDF, padronizar dados financeiros e simplificar o plano de contas para micro e pequenas empresas.
+Desenvolvidos:
+- Fluxo Principal
+- Módulos a Desenvolver
+- Escopo
+Semanal com cliente II
+Data:  Dec 05 2025, 4:00 PM
+Link Gravação: https://app.fireflies.ai/view/Semanal-ACC-e-ATRIA::01KBC85KG899WAQVQ42F7CWMZS
+Resumo do discutido:
+Objetivo discutido: Criar um sistema de IA para extrair, padronizar e classificar automaticamente transações bancárias, gerando relatórios e integrações via WhatsApp1.
+Desenvolvidos:
+- Motor de extração de documentos (ETL)
+- Classificador de custos por plano de contas
+- Painel de validação interna
+- Integração WhatsApp para lançamentos
+-Relatório PMI automático
+Semanal com cliente III
+Data: Dec 12 2025, 4:00 PM
+Link Gravação: https://app.fireflies.ai/view/Semanal-ACC-e-ATRIA::01KBQY817EB3MNWGZR667KE7QK
+Resumo do discutido:
+Objetivo discutido: Criar um sistema de IA que automatiza a extração, validação e categorização de dados de extratos bancários, substituindo controle manual por planilhas.
+Desenvolvidos:
+- Engine de extração de dados de extratos (em testes)
+- Banco de dados indexando informações extraídas
+- Reconhecimento de operações suspeitas (IOF, empréstimos ocultos)
+Próximos Passos:
+- Motor de ETL para padrão ACC
+- Módulo de categorização e clusterização de gastos
+- Documentação de regras financeiras para treinar a IA
+Semanal com cliente IV (Mensal de entrega)
+Data:
+Link Gravação:
+Resumo do discutido:
+12/01/2026 - planejamento
+Guia 9
+Faça uma mensagem para o cliente com base na reunião anexada
+4 elementos da mensagem pós reunião com cliente:
+1. Discussões e decisões tomadas (mini resumo)
+2. Ações (tarefas nossas e do cleinte, com @ do responsável e prazo)
+3. Data e Pauta da próxima reunião
+4. Link da gravação
+📝 Resumo da Reunião e Próximos Passos
+Olá, Osvaldo e Nahim,
+Seguem os pontos principais discutidos em nossa reunião hoje:
+Discussões e Decisões Tomadas
+Apresentação da Versão 2: Demonstramos a evolução do sistema, que agora permite o upload de múltiplos extratos bancários simultaneamente e realiza a categorização automática idêntica ao padrão utilizado por vocês.
+Adiantamento do Cronograma: O projeto está atualmente três semanas adiantado em relação ao planejamento original.
+Mudança de Escopo: Optamos por migrar a interface principal de testes do WhatsApp para um ambiente Web. A Atria seguirá com o desenvolvimento dessa plataforma inicial sem custos adicionais neste momento.
+A Ana será adicionada no grupo, ela que irá assumir essa parte de desenvolvimento web.
+Referência Visual: O protótipo desenvolvido pelo Nahim no Lovable será utilizado como base para o design dos dashboards e relatórios.
+Link da Gravação: 🔗 https://app.fireflies.ai/view/Semanal-ACC-e-ATRIA::01KGT6HZ88P8JFYRZT91V5PS7P
+2. Plano de Ação (Tarefas e Prazos)
+3. Próxima Reunião
+Data: 19 de fevereiro de 2026 (Quinta-feira).
+Pauta: Apresentação do consolidado multibanco e validação do documento de escopo da versão Web.
++1
+4. Link da Gravação
+Você pode revisar os detalhes da nossa conversa no link abaixo: 🔗 https://app.fireflies.ai/view/Semanal-ACC-e-ATRIA::01KGT6HZ88P8JFYRZT91V5PS7P
+Thiago, gostaria que eu já preparasse o rascunho do documento de escopo que o Eduardo mencionou para a Julia validar?
+🌟 Mudanças no escopo
+Estado atual do projeto:
+O projeto encontra-se em uma fase avançada, operando com uma interface funcional onde o site, conectado via webhook, permite o upload múltiplo de extratos bancários para processamento automático. Atualmente, o sistema já realiza a extração de valores para uma planilha, onde uma IA treinada categoriza cada transação seguindo rigorosamente o "plano de contas - exemplo varejo" e o padrão de tabela fornecidos pela ACC.
+A automação devolve ao usuário um arquivo xlsx consolidado para download ao final do fluxo.
+Link da versão 2 funcional (12/02/26): https://inspiring-nougat-dc6590.netlify.app/
+(Obs: O domínio do site pode ser mudado com base na vontade do cliente)
+Novo Escopo do Projeto: ACC & ATRIA
+O objetivo central permanece na automação da análise de extratos bancários com categorização via IA. No entanto, a interface de entrega e a experiência do usuário foram migradas de um modelo passivo (WhatsApp) para um modelo ativo e visual (Plataforma Web).
+O que o Cliente Deseja (Expectativa)
+Os clientes (Osvaldo e Nahim) buscam uma ferramenta que seja o "café da manhã do empresário". Eles apresentaram referências de dashboards criados pelo Nahin no Lovable que incluem:
+(Link lovable: https://lovable.dev/projects/cf7eaec8-2d34-41ee-82d3-a16786bb698f)
+Visualização Consolidada: Um painel que mostre o total geral de múltiplos bancos, e não apenas análises individuais.
+Módulos de Análise: Além do fluxo de caixa, o desejo de evoluir para DRE (Demonstração do Resultado do Exercício), apuração por unidade e balanço patrimonial.
+Interface Amigável: Uso de indicadores visuais como "semáforos" (amarelo, vermelho, verde) para metas e comparativos de crescimento.
+Mudanças no Projeto: De WhatsApp para Web
+A principal mudança é a substituição do fluxo via mensagens por uma Prova de Conceito (PoC) em ambiente Web.
+(Adição na Ana no projeto para Desenvolvimento Web e UX/UI)
+O que ficou definido:
+Para manter a viabilidade financeira e o prazo, o novo escopo será limitado a:
+Migração de Interface: A integração que seria via WhatsApp (ATIABot) será convertida para um painel web simples.
+Funcionalidades de Visualização: Implementação do relatório PMG dentro do site, permitindo que o cliente veja o consolidado das contas.
+Critério de Limitação: Novas funções complexas (filtros avançados, alertas, DREs contábeis profundas) serão anotadas para fases futuras para evitar custos adicionais imediatos.
+NÃO SERÁ REALIZADO:
+Gestão de Acesso: Criação de um banco de dados de usuários para login e senha.
+Nota: A Atria assumirá este aditivo de interface web sem custo extra para esta primeira alteração, visando a parceria no projeto.
+Demonstração teste
+Plano de Contas
+Entradas de Caixa
+Saídas de Caixa
+Crítérios de aceite go-live
+MÓDULO 1 — Upload e Processamento de Extratos via Plataforma Web
+1. Critério de aceite (está feito quando):
+O site permite o upload múltiplo de extratos bancários (mais de um arquivo por vez)
+O webhook recebe os arquivos e dispara o processamento automaticamente
+O sistema extrai os valores dos extratos e alimenta a planilha de categorização sem intervenção manual
+O fluxo completo (upload → processamento → download) funciona de ponta a ponta
+2. Fora do escopo (nova demanda se pedirem):
+Upload via WhatsApp, e-mail ou qualquer canal além da plataforma web
+Processamento de formatos de extrato não testados e validados durante o desenvolvimento
+Agendamento automático de processamento sem ação do usuário (upload programado)
+Histórico de arquivos enviados com log consultável pelo cliente
+MÓDULO 2 — Categorização via IA com Plano de Contas ACC
+1. Critério de aceite:
+A IA categoriza cada transação seguindo rigorosamente o "plano de contas – exemplo varejo" fornecido pela ACC
+A categorização respeita o padrão de tabela acordado pela ACC
+O resultado da categorização é preciso o suficiente para ser validado pela equipe ACC antes de apresentar ao cliente final
+O modelo funciona para os segmentos e bancos testados durante o desenvolvimento
+2. Fora do escopo:
+Criação de planos de contas personalizados por empresa cliente da ACC
+Categorização automática para novos segmentos (DRE, balanço patrimonial, apuração por unidade) — esses são módulos futuros
+Treinamento proprietário de modelo de IA (explicitamente fora do BPO A5)
+Mecanismo de correção manual acessível pelo cliente final via interface web
+MÓDULO 3 — Geração e Download do Arquivo Consolidado (XLSX)
+1. Critério de aceite:
+Ao final do fluxo de processamento, o sistema disponibiliza um arquivo .xlsx consolidado para download
+O arquivo contém as transações de todos os extratos enviados no mesmo upload, consolidadas em uma única planilha
+O arquivo segue o padrão de tabela ACC acordado
+O download funciona diretamente na interface web, sem necessidade de envio por e-mail ou WhatsApp
+2. Fora do escopo:
+Exportação em outros formatos além do .xlsx (PDF, CSV, OFX)
+Envio automático do arquivo por e-mail ou WhatsApp após o processamento
+Consolidação de extratos de sessões/uploads anteriores com os do upload atual
+Geração de relatório PMG visual dentro do xlsx (isso é o Módulo 4)
+MÓDULO 4 — Dashboard Web com Visualização do Relatório PMG
+1. Critério de aceite:
+A plataforma web exibe o relatório PMG em formato visual (gráficos e tabelas) a partir dos dados processados
+O dashboard mostra o consolidado de múltiplos bancos em uma visão única, não individualmente
+As categorias exibidas são: custo variável, custo fixo, juros e investimentos — conforme padrão PMG ACC
+O dashboard é acessível e funcional no navegador sem necessidade de instalar nada
+2. Fora do escopo:
+Módulos de DRE, apuração por unidade ou balanço patrimonial — anotados para fases futuras
+Filtros avançados por período, categoria ou banco — anotados para fases futuras
+Indicadores visuais de semáforo (amarelo/vermelho/verde) por meta — anotados para fases futuras
+Comparativos de crescimento entre períodos — anotados para fases futuras
+Criação de banco de dados de usuários com login e senha — explicitamente fora do escopo nesta fase
+MÓDULO 5 — Domínio e Ambiente Web (Netlify)
+1. Critério de aceite:
+A plataforma está publicada e acessível via URL funcional (referência atual: inspiring-nougat-dc6590.netlify.app)
+O ambiente responde corretamente ao upload de arquivos e ao processamento via webhook
+A troca de domínio, se solicitada pelo cliente, é tecnicamente viável sem reconstrução do sistema
+2. Fora do escopo:
+Configuração de domínio personalizado pago (custo e contratação são responsabilidade do cliente)
+Infraestrutura própria de servidor (a plataforma opera no Netlify, conforme acordado)
+Certificado SSL além do oferecido gratuitamente pelo Netlify
+Administração de servidores, cloud ou redes — explicitamente fora do BPO A5
+Checklist de GoLive
+Upload múltiplo de extratos funciona na plataforma web
+Webhook recebe os arquivos e dispara o processamento automaticamente
+IA categoriza transações seguindo o plano de contas ACC – exemplo varejo
+Arquivo .xlsx consolidado é gerado e disponibilizado para download ao final do fluxo
+Dashboard web exibe o relatório PMG com visão consolidada de múltiplos bancos
+Dashboard exibe as categorias corretas: custo variável, fixo, juros e investimentos
+Plataforma está publicada e acessível via URL funcional
+Teste ponta a ponta realizado: upload de extratos → categorização → download xlsx → visualização no dashboard
+Estado do projeto atual
+n8n:
+ACC - automação V4:
+https://n8n.servidoremn.site/workflow/Iud8yMfy7b9M0bLK
+ACC - automação V5:
+https://n8n.servidoremn.site/workflow/9JoeqPLRvWXoYqYP
+Lovable (Remix of ACC Financial Hub - Paschoim):
+https://lovable.dev/projects/cd26fd4a-dd0e-4206-8e39-2a8ebc94d19f
+Link para a ferramenta/dashboard:
+https://acc-dashboard.atriacorp.com.br/
+Não é preciso acessos, lovable é usado acessando via conta da tech
+Pasta com extratos bancário de exemplo para usar em testes:
+https://drive.google.com/drive/u/2/folders/1r4wG_KDIybwhAbkBn_ChZ-57q7NtH-Cv
+Resumo da automação:
+Cliente abre o dashboard e envia um extrato bancário, o extrato é enviado do lovable para a automação v4 no n8n via webhook, onde ele é analisado e enviado de volta para o lovable.
+A automação v5 é a responsável por organizar e extrair a tabela do dashboard para uma planilha no excel organizada, ela é ativada (via webhook) ao clicar no botão “exportar para planilha” na aba “resumo” do dashboard.
+A automação v5 funciona 100%
+Problema: automação V4 não está fazendo a análise correta de extratos, muitas vezes esquece itens ou demora muito tempo para acabar a análise.
+Lógica da automação (v4): Ela atua como um sistema de OCR e processamento de dados usando inteligência artificial. Recebe extratos bancários em formato PDF, divide o texto em partes (chunks) para respeitar os limites de leitura da IA, envia esses pedaços para o modelo gpt-4o-mini analisar com base num plano de contas predefinido e, em seguida, formata os resultados estruturados, calculando os saldos linha a linha para serem gravados num banco de dados ou folha de cálculo.
+A automação tem que ser responsiva para qualquer tipo de extrato, então não existe uma formatação única e a IA precisa se adequar a todas as situações (que são imprevisíveis, cada banco tem um extrato completamente diferente) e seguir as regras e variáveis impostas pelo cliente (estão no prompt (user message) do “Basic LLM Chain6”)
+O maior teste de funcionalidade é testar a automação com o extrato da Bradesco (com 29 páginas: https://drive.google.com/file/d/1YbgklNMpB3YzQtysIQhQMnCwjQWfJjZw/view?usp=drive_link) e verificar se todos os itens foram listados. Se com esse extrato funcionar acho que qualquer um funciona (apesar de que o cliente disse que pode chegar alguém querendo analisar 80+ páginas), então é imprescindível que a análise esteja otimizada.
+prompt
+Estou desenvolvendo uma automação no n8n cujo objetivo é extrair dados de extratos bancários. Estou usando a interface do n8n. A função da automação é replicar as informações do extrato em uma tabela no meu dashboard, as informações que devem ser passadas são as seguintes:
+Dados únicos (aparecem somente uma vez):
+Nome do banco
+Saldo inicial
+Saldo Final
+Colunas que devem ser inteiramente retiradas da tabela:
+Data
+Descrição (se houver)
+Tipo (crédito (entrada/valores positivos) ou débito (saída/valores negativos)
+Valor
+Saldo
+O saldo pode aparecer ou não no extrato, a automação não precisa extrair o saldo pois consegue calcular ele com base nos outros itens extraídos.
+A tabela gerada pela automação deve ser idêntica aos dados do extrato enviado.
+A automação irá receber diferentes tipos de extratos de diferentes tipos de bancos, logo não é possível padronizar essa extração de dados e o uso da IA se torna necessário para conseguir analisar qualquer extrato.
+O modelo que irei usar será o gpt-4o-mini (se tiver outro modelo com um melhor custo benefício e que seja mais apropriada para meu projeto, me diga)
+Anexado a este prompt tem alguns documentos pdf, esses são alguns exemplos que irão passar pela automação.
+A automação precisa ser precisa e não pode deixar nenhum item passar (esquecer algum item)
+Pense em um plano para que essa automação funcione e me ajude a desenvolver ele, você deve gerar e me devolver o código da automação finalizado.
+Meu código inicial está a seguir:
+{
+"nodes": [
+{
+"parameters": {
+"httpMethod": "POST",
+"path": "analise-documento",
+"responseMode": "responseNode",
+"options": {}
+},
+"id": "3855d848-799f-4813-a659-daaf884b9105",
+"name": "Webhook - Recebe Arquivo1",
+"type": "n8n-nodes-base.webhook",
+"typeVersion": 1.1,
+"position": [
+1856,
+336
+],
+"webhookId": "analise-documento"
+},
+{
+"parameters": {
+"respondWith": "json",
+"responseBody": "={{ $json.text }}",
+"options": {
+"responseHeaders": {
+"entries": [
+{
+"name": "Access-Control-Allow-Origin",
+"value": "*"
+}
+]
+}
+}
+},
+"id": "6a106ae1-cd19-458a-977a-80d723f24ad7",
+"name": "Responder ao Site1",
+"type": "n8n-nodes-base.respondToWebhook",
+"typeVersion": 1,
+"position": [
+2704,
+336
+]
+},
+{
+"parameters": {
+"promptType": "define",
+"text": "=Aqui está o conteúdo do relatório para você analisar: {{ $json.text }}",
+"messages": {
+"messageValues": [
+{
+"message": "=Você é um analista de dados contábeis sênior. Sua missão é extrair dados de relatórios financeiros brutos e convertê-los em um objeto JSON válido.\nRegras Absolutas:\n\nIdentifique o valor inicial e o Faturamento/Custo Total.\n\nIdentifique a tabela principal do relatório e extraia TODOS os seus itens separadamente em um array chamado \"itens_extrato\". Adapte-se dinamicamente às colunas de qualquer tabela que receber.\n\nCRÍTICO: Retorne absolutamente TODOS os valores numéricos como strings (entre aspas duplas). Exemplo: \"54.222,91\" e nunca 54.222.91.\n\nRetorne APENAS o JSON, sem marcações markdown como ```json."
+}
+]
+},
+"batching": {}
+},
+"type": "@n8n/n8n-nodes-langchain.chainLlm",
+"typeVersion": 1.9,
+"position": [
+2320,
+336
+],
+"id": "350fe846-5df9-4ee4-b039-98129b7e74e0",
+"name": "Basic LLM Chain1"
+},
+{
+"parameters": {
+"model": {
+"__rl": true,
+"value": "gpt-4o-mini",
+"mode": "list",
+"cachedResultName": "gpt-4o-mini"
+},
+"builtInTools": {},
+"options": {}
+},
+"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+"typeVersion": 1.3,
+"position": [
+2256,
+544
+],
+"id": "8390ef15-4661-4cb6-9f78-a56783254cf9",
+"name": "OpenAI Chat Model1",
+"credentials": {
+"openAiApi": {
+"id": "swWAvodn9s8YkyqQ",
+"name": "UniãoBR"
+}
+}
+},
+{
+"parameters": {
+"operation": "pdf",
+"binaryPropertyName": "file",
+"options": {}
+},
+"type": "n8n-nodes-base.extractFromFile",
+"typeVersion": 1.1,
+"position": [
+2096,
+336
+],
+"id": "32536974-8e2b-4d3c-8905-43a7264a44ee",
+"name": "Extract from File1"
+}
+],
+"connections": {
+"Webhook - Recebe Arquivo1": {
+"main": [
+[
+{
+"node": "Extract from File1",
+"type": "main",
+"index": 0
+}
+]
+]
+},
+"Basic LLM Chain1": {
+"main": [
+[
+{
+"node": "Responder ao Site1",
+"type": "main",
+"index": 0
+}
+]
+]
+},
+"OpenAI Chat Model1": {
+"ai_languageModel": [
+[
+{
+"node": "Basic LLM Chain1",
+"type": "ai_languageModel",
+"index": 0
+}
+]
+]
+},
+"Extract from File1": {
+"main": [
+[
+{
+"node": "Basic LLM Chain1",
+"type": "main",
+"index": 0
+}
+]
+]
+}
+},
+"pinData": {},
+"meta": {
+"templateCredsSetupCompleted": true,
+"instanceId": "5f3b29a6b4ee7d117427373a2276df8e98ca468fb527c348891ff6c7bf853515"
+}
+}
+Meu maior problema é a autenticidade dos dados e ter certeza que a IA não esqueça nenhum item, ainda mais com extratos grandes (com 10 ou mais páginas), já que nesses casos a IA tende a esquecer ou ignorar muitos itens
+[TABLE]
+Objetivo | Descrição | Dependências | Milestone (Data Limite Interna ATRIA)
+O1 — KR1 | Engine de extração OCR/IDP padronizada por banco | Nenhuma | 22/12/2025
+O2 — KR2 | ETL para padrão ACC (comércio/varejo primeiro) | KR1 | 19/01/2026
+O3 — KR3 | Clusterizador NLP para categorias de custos | KR2 | 16/02/2026
+O4 — KR4 | Painel de validação interna com feedback | KR3 | 02/03/2026
+O5 — KR5 | Setup inicial (tipo de empresa + fornecedores) | Paralelo, ideal antes do KR3 | 02/02/2026
+O6 — KR6 | Lançamentos via WhatsApp | KR5 + parcial KR3 | 09/03/2026
+O7 — KR7 | Relatório PMG automático | KR3 + KR4 | 16/03/2026
+O8 — KR8 | Disparo semanal WhatsApp + e-mail | KR7 | 20/03/2026
+O9 — KR9 | LGPD + Termos de uso | Nenhuma | 09/02/2026
+[TABLE]
+Ação | Responsável | Prazo
+Implementar a junção (consolidado) de todas as tabelas multibanco. +1 | @Thiago Paschoim | Até 19/02
+Elaborar documento oficial com o novo escopo do Website (funcionalidades X, Y, Z) para validação. +2 | @Julia e @Eduardo | Até 19/02
+Iniciar o desenvolvimento da interface Web e UX. +1 | @Ana | Em andamento
+Enviar acesso/referências adicionais do layout desejado via WhatsApp. +1 | @Nahim Amud | Imediato
+Validar os relatórios individuais gerados pela automação. +1 | @Osvaldo Junior | Até 19/02
+[TABLE]
+Característica | Escopo Original | Novo Escopo
+Interface Principal | WhatsApp (Envio de extratos e recebimento de relatórios). | Website/Plataforma Web (Upload de arquivos e visualização de dados).
+Acesso | Notificações e arquivos enviados diretamente ao usuário. | Sistema de Login e Senha para acesso individual do cliente.
+Relatórios | Relatórios PMG em formato Excel. | Dashboard de Visualização com gráficos e tabelas consolidadas.
+[TABLE]
+Transferência ( + ) Recebimento Dinheiro Rec. Cartão de Débito Rec. Cartão de Crédito Recebimento de boletos Recebimento de Deposito Recebimento em Cheque … Adicionar Categorias
+[TABLE]
+Transferência ( - ) Impostos Federais Impostos Estaduais Impostos Municipais Combustivel Comissões Internas Comissões Externas … Adicionar Categorias
