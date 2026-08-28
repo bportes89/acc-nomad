@@ -71,19 +71,33 @@ export function PmgAgendamentoPanel({
   }
 
   async function dispararAgora() {
+    if (!initial.some((a) => a.ativo)) {
+      setMessage("Salve um agendamento ativo antes de testar (botão Agendar envio semanal).");
+      return;
+    }
     setLoading(true);
     setMessage("");
-    const res = await fetch("/api/pmg/disparo-semanal?force=true", { method: "POST" });
+    const d = new Date();
+    const mesAtual = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const res = await fetch(
+      `/api/pmg/disparo-semanal?force=true&periodo=${mesAtual}`,
+      { method: "POST" },
+    );
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       setMessage(formatApiError(data.error ?? data.detail, "Erro no disparo semanal"));
     } else {
       const ok = data.enviados?.length ?? 0;
       const erros = data.erros?.length ?? 0;
+      const ignorados = data.ignorados?.length ?? 0;
       const detalheErros =
         erros > 0 && data.erros?.[0]?.erro ? ` — ${data.erros[0].erro}` : "";
+      const detalheIgnorados =
+        ok === 0 && ignorados > 0 && data.ignorados?.[0]?.motivo
+          ? ` (${data.ignorados[0].motivo})`
+          : "";
       setMessage(
-        `Disparo concluído (${data.periodo}): ${ok} enviado(s), ${erros} erro(s)${detalheErros}.`,
+        `Teste concluído — período ${data.periodo}: ${ok} enviado(s), ${erros} erro(s), ${ignorados} ignorado(s)${detalheErros}${detalheIgnorados}. O cron automático usa o mês anterior.`,
       );
       router.refresh();
     }
@@ -103,8 +117,8 @@ export function PmgAgendamentoPanel({
             Envio semanal automático
           </h3>
           <p className="mt-1 text-xs text-slate-500">
-            Toda semana, no dia escolhido, envia o PMG do <strong>mês anterior</strong> por
-            e-mail ou WhatsApp (cron Vercel + Render).
+            Toda semana, no dia escolhido, o cron envia o PMG do <strong>mês anterior</strong>.
+            O botão de teste usa o <strong>mês atual</strong> (com lançamentos visíveis no painel).
           </p>
         </div>
         <button

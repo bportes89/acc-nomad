@@ -36,15 +36,20 @@ Projeto - ACC/
 
 ### Envio PMG (Email / WhatsApp)
 
-Configure no `backend/.env`:
+O **SMTP é da conta que envia** (escritório contábil / ACC Nomad), não do cliente.  
+Os **destinatários** podem usar qualquer provedor: Gmail, Outlook, Yahoo, e-mail corporativo, etc.
+
+Configure na **Vercel** (PMG roda no frontend) ou no `backend/.env`:
 
 ```env
-# E-mail
+# Conta remetente — SMTP_HOST depende de QUEM ENVIA, não de quem recebe:
+# Gmail: smtp.gmail.com | Outlook: smtp.office365.com | Yahoo: smtp.mail.yahoo.com
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
-SMTP_USER=seu@gmail.com
+SMTP_USER=contato@escritorio.com
 SMTP_PASSWORD=senha-de-app
-EMAIL_FROM=acc-nomad@seudominio.com
+EMAIL_FROM=contato@escritorio.com
+SUPABASE_SERVICE_ROLE_KEY=...   # só na Vercel
 
 # WhatsApp (Evolution API, Twilio, etc.)
 WHATSAPP_API_URL=https://sua-api/send

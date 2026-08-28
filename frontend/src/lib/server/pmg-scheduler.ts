@@ -20,10 +20,19 @@ function empresaNome(ag: AgendamentoRow): string {
 }
 
 function previousMonthPeriod(reference = new Date()) {
-  const year =
-    reference.getMonth() === 0 ? reference.getFullYear() - 1 : reference.getFullYear();
-  const month = reference.getMonth() === 0 ? 12 : reference.getMonth();
+  const ref = new Date(reference.getFullYear(), reference.getMonth(), 1);
+  ref.setMonth(ref.getMonth() - 1);
+  const year = ref.getFullYear();
+  const month = ref.getMonth() + 1;
   const periodo = `${year}-${String(month).padStart(2, "0")}`;
+  const inicio = `${periodo}-01`;
+  const lastDay = new Date(year, month, 0).getDate();
+  const fim = `${periodo}-${String(lastDay).padStart(2, "0")}`;
+  return { periodo, inicio, fim };
+}
+
+function periodBounds(periodo: string) {
+  const [year, month] = periodo.split("-").map(Number);
   const inicio = `${periodo}-01`;
   const lastDay = new Date(year, month, 0).getDate();
   const fim = `${periodo}-${String(lastDay).padStart(2, "0")}`;
@@ -86,7 +95,10 @@ async function fetchPmgData(empresaId: string, inicio: string, fim: string) {
   };
 }
 
-export async function runWeeklyPmgDispatch(options?: { force?: boolean }) {
+export async function runWeeklyPmgDispatch(options?: {
+  force?: boolean;
+  periodo?: string;
+}) {
   const force = options?.force ?? false;
   const today = new Date();
   const weekday = today.getDay() === 0 ? 6 : today.getDay() - 1; // seg=0 … dom=6
@@ -95,7 +107,9 @@ export async function runWeeklyPmgDispatch(options?: { force?: boolean }) {
     ? await fetchActiveAgendamentos()
     : await fetchActiveAgendamentos(weekday);
 
-  const { periodo, inicio, fim } = previousMonthPeriod(today);
+  const { periodo, inicio, fim } = options?.periodo
+    ? periodBounds(options.periodo)
+    : previousMonthPeriod(today);
   const supabase = getSupabaseAdmin();
 
   const enviados: Array<{ empresa: string; destinatario: string; canal: string; periodo: string }> =

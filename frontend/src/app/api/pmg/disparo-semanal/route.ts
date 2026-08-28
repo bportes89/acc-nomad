@@ -6,9 +6,10 @@ export const maxDuration = 60;
 export async function POST(request: Request) {
   const { searchParams } = new URL(request.url);
   const force = searchParams.get("force") === "true";
+  const periodo = searchParams.get("periodo") ?? undefined;
 
   try {
-    const result = await runWeeklyPmgDispatch({ force });
+    const result = await runWeeklyPmgDispatch({ force, periodo });
     return NextResponse.json(result);
   } catch (err) {
     const message =

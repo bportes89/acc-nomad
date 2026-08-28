@@ -39,7 +39,7 @@ async function sendEmail(destinatario: string, assunto: string, corpo: string): 
 
   if (!host || !from) {
     throw new PmgDeliveryError(
-      "SMTP não configurado na Vercel. Defina SMTP_HOST, SMTP_USER, SMTP_PASSWORD e EMAIL_FROM.",
+      "SMTP não configurado. Defina SMTP_HOST, SMTP_USER, SMTP_PASSWORD e EMAIL_FROM (conta remetente do escritório).",
     );
   }
 
