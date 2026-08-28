@@ -44,7 +44,10 @@ def generate_json(system: str, user: str) -> dict:
     except Exception as exc:
         logger.warning("LLM %s falhou: %s", provider, exc)
         if explicit:
-            raise LlmCallError(f"Erro na API {provider}: {exc}") from exc
+            hint = ""
+            if provider == "anthropic" and "not_found_error" in str(exc):
+                hint = f" Verifique ANTHROPIC_MODEL (atual: {settings.anthropic_model})."
+            raise LlmCallError(f"Erro na API {provider}: {exc}{hint}") from exc
         return {"transactions": []}
 
 

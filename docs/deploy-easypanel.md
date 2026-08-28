@@ -118,7 +118,7 @@ CORS_ORIGINS=https://app.seudominio.com
 
 LLM_PROVIDER=anthropic
 ANTHROPIC_API_KEY=sk-ant-...
-ANTHROPIC_MODEL=claude-sonnet-4-20250514
+ANTHROPIC_MODEL=claude-sonnet-4-6
 ```
 
 Gere `API_SECRET` com:

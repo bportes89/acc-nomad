@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o-mini"
 
     anthropic_api_key: str = ""
-    anthropic_model: str = "claude-sonnet-4-20250514"
+    anthropic_model: str = "claude-sonnet-4-6"
 
     # LLM para classificação: auto | fallback | gemini | groq | openai | anthropic
     llm_provider: str = "auto"

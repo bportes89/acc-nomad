@@ -64,7 +64,7 @@ WHATSAPP_API_TOKEN=token
 ```env
 LLM_PROVIDER=anthropic
 ANTHROPIC_API_KEY=sk-ant-api03-...
-ANTHROPIC_MODEL=claude-sonnet-4-20250514
+ANTHROPIC_MODEL=claude-sonnet-4-6
 ```
 
 3. Reinicie o backend e confira: `GET /health` → `"llm_provider": "anthropic"`
