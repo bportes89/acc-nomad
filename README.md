@@ -33,6 +33,10 @@ Projeto - ACC/
 5. `005_onboarding_plano_contas.sql`
 6. `006_reports_suporte.sql`
 7. `007_extrato_saldo_validacao.sql`
+8. `008_pmg_agendamentos.sql`
+9. `009_envios_pmg_rastreio.sql`
+
+**Guia completo de entrega e testes:** [docs/GUIA-ENTREGA-E-TESTES.md](docs/GUIA-ENTREGA-E-TESTES.md)
 
 ### Envio PMG (Email / WhatsApp)
 

@@ -1,10 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { PmgPanel } from "@/components/pmg-panel";
 import { PmgAgendamentoPanel } from "@/components/pmg-agendamento-panel";
+import { isWhatsAppConfigured } from "@/lib/server/whatsapp";
 import type { Empresa, EnvioPmg, Lancamento, PmgAgendamento, TesourariaLancamento } from "@/lib/types";
 
 export default async function PmgPage() {
   const supabase = await createClient();
+  const whatsappDisponivel = isWhatsAppConfigured();
 
   const [
     { data: empresas },
@@ -45,12 +47,14 @@ export default async function PmgPage() {
         <PmgAgendamentoPanel
           empresas={(empresas as Empresa[]) ?? []}
           agendamentos={(agendamentos as PmgAgendamento[]) ?? []}
+          whatsappDisponivel={whatsappDisponivel}
         />
         <PmgPanel
           empresas={(empresas as Empresa[]) ?? []}
           lancamentos={(lancamentos as Lancamento[]) ?? []}
           tesouraria={(tesouraria as TesourariaLancamento[]) ?? []}
           envios={(envios as EnvioPmg[]) ?? []}
+          whatsappDisponivel={whatsappDisponivel}
         />
       </div>
     </div>

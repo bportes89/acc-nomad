@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Download, Mail, MessageCircle } from "lucide-react";
 import { PmgChart } from "@/components/pmg-chart";
 import { calcularPmg, toExportRows } from "@/lib/pmg";
@@ -15,11 +16,13 @@ export function PmgPanel({
   lancamentos,
   tesouraria,
   envios,
+  whatsappDisponivel = false,
 }: {
   empresas: Empresa[];
   lancamentos: Lancamento[];
   tesouraria: TesourariaLancamento[];
   envios: EnvioPmg[];
+  whatsappDisponivel?: boolean;
 }) {
   const [empresaId, setEmpresaId] = useState(empresas[0]?.id ?? "todas");
   const [mes, setMes] = useState(() => {
@@ -30,6 +33,7 @@ export function PmgPanel({
   const [canal, setCanal] = useState<"email" | "whatsapp">("email");
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState("");
+  const router = useRouter();
 
   const empresaAtual = empresas.find((e) => e.id === empresaId);
 
@@ -103,7 +107,11 @@ export function PmgPanel({
     if (!res.ok) {
       setMessage(formatApiError(data.error ?? data.detail, "Erro ao enviar PMG"));
     } else {
-      setMessage(`PMG enviado por ${canal} para ${destinatario}`);
+      const idHint = data.provider_message_id
+        ? ` (ID: ${data.provider_message_id})`
+        : "";
+      setMessage(`PMG enviado por ${canal} para ${data.destinatario ?? destinatario}${idHint}`);
+      router.refresh();
     }
     setSending(false);
   }
@@ -176,8 +184,15 @@ export function PmgPanel({
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
             >
               <option value="email">E-mail</option>
-              <option value="whatsapp">WhatsApp</option>
+              <option value="whatsapp" disabled={!whatsappDisponivel}>
+                WhatsApp{whatsappDisponivel ? "" : " (configurar depois)"}
+              </option>
             </select>
+            {!whatsappDisponivel && (
+              <p className="mt-1 text-xs text-slate-500">
+                WhatsApp será habilitado quando o cliente definir o provedor (Z-API, Evolution, etc.).
+              </p>
+            )}
           </div>
           <div className="sm:col-span-2">
             <label className="mb-1 block text-xs font-medium text-slate-600">
@@ -223,6 +238,7 @@ export function PmgPanel({
                 <th className="px-4 py-3 font-medium">Canal</th>
                 <th className="px-4 py-3 font-medium">Destinatário</th>
                 <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Rastreio</th>
               </tr>
             </thead>
             <tbody>
@@ -243,6 +259,26 @@ export function PmgPanel({
                     >
                       {e.status}
                     </span>
+                    {e.status === "erro" && e.erro_mensagem && (
+                      <p className="mt-1 max-w-xs text-xs text-red-500" title={e.erro_mensagem}>
+                        {e.erro_mensagem.slice(0, 80)}
+                        {e.erro_mensagem.length > 80 ? "…" : ""}
+                      </p>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-slate-500">
+                    {e.provider_message_id ? (
+                      <span title={e.provider_message_id}>
+                        {e.provider_name ?? "api"}:{" "}
+                        {e.provider_message_id.length > 12
+                          ? `${e.provider_message_id.slice(0, 12)}…`
+                          : e.provider_message_id}
+                      </span>
+                    ) : e.canal === "whatsapp" ? (
+                      "—"
+                    ) : (
+                      "e-mail"
+                    )}
                   </td>
                 </tr>
               ))}

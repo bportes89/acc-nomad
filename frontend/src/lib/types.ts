@@ -111,6 +111,9 @@ export interface EnvioPmg {
   destinatario: string;
   status: "enviado" | "erro" | "pendente";
   erro_mensagem: string | null;
+  provider_name: string | null;
+  provider_message_id: string | null;
+  confirmado_em: string | null;
   created_at: string;
 }
 

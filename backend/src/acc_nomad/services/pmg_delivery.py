@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 import smtplib
-from datetime import date
+from datetime import date, datetime, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Any
 
-import httpx
-
 from acc_nomad.config import settings
 from acc_nomad.services.supabase_client import get_supabase_client
+from acc_nomad.services.whatsapp_client import WhatsAppError, send_whatsapp_message
 
 
 class DeliveryError(RuntimeError):
@@ -62,31 +61,6 @@ def send_email(destinatario: str, assunto: str, corpo: str) -> None:
         server.send_message(msg)
 
 
-def send_whatsapp(destinatario: str, mensagem: str) -> None:
-    if not settings.whatsapp_api_url:
-        raise DeliveryError(
-            "WhatsApp não configurado. Defina WHATSAPP_API_URL e WHATSAPP_API_TOKEN em backend/.env"
-        )
-
-    headers = {"Content-Type": "application/json"}
-    if settings.whatsapp_api_token:
-        headers["Authorization"] = f"Bearer {settings.whatsapp_api_token}"
-
-    payload = {
-        "number": destinatario,
-        "message": mensagem,
-    }
-
-    response = httpx.post(
-        settings.whatsapp_api_url,
-        json=payload,
-        headers=headers,
-        timeout=30,
-    )
-    if response.status_code >= 400:
-        raise DeliveryError(f"WhatsApp API erro {response.status_code}: {response.text[:200]}")
-
-
 def registrar_envio(
     *,
     empresa_id: str,
@@ -97,6 +71,9 @@ def registrar_envio(
     status: str,
     enviado_por: str | None = None,
     erro_mensagem: str | None = None,
+    provider_name: str | None = None,
+    provider_message_id: str | None = None,
+    confirmado_em: str | None = None,
 ) -> dict[str, Any]:
     client = get_supabase_client()
     row = {
@@ -108,6 +85,9 @@ def registrar_envio(
         "status": status,
         "enviado_por": enviado_por,
         "erro_mensagem": erro_mensagem,
+        "provider_name": provider_name,
+        "provider_message_id": provider_message_id,
+        "confirmado_em": confirmado_em,
     }
     result = client.table("envios_pmg").insert(row).execute()
     return {"saved": True, "data": result.data}
@@ -129,23 +109,44 @@ async def enviar_pmg(
     assunto = f"ACC Nomad — PMG {periodo} — {empresa_nome}"
 
     try:
+        provider_name: str | None = None
+        provider_message_id: str | None = None
+        destinatario_final = destinatario
+
         if canal == "email":
             send_email(destinatario, assunto, corpo)
         elif canal == "whatsapp":
-            send_whatsapp(destinatario, corpo)
+            try:
+                wa = send_whatsapp_message(destinatario, corpo)
+            except WhatsAppError as exc:
+                raise DeliveryError(str(exc)) from exc
+            provider_name = wa.get("provider")
+            provider_message_id = wa.get("message_id")
+            destinatario_final = wa.get("normalized_number", destinatario)
         else:
             raise DeliveryError(f"Canal inválido: {canal}")
+
+        confirmado_em = datetime.now(timezone.utc).isoformat()
 
         registrar_envio(
             empresa_id=empresa_id,
             periodo_inicio=periodo_inicio,
             periodo_fim=periodo_fim,
             canal=canal,
-            destinatario=destinatario,
+            destinatario=destinatario_final,
             status="enviado",
             enviado_por=enviado_por,
+            provider_name=provider_name,
+            provider_message_id=provider_message_id,
+            confirmado_em=confirmado_em,
         )
-        return {"status": "enviado", "canal": canal, "destinatario": destinatario}
+        return {
+            "status": "enviado",
+            "canal": canal,
+            "destinatario": destinatario_final,
+            "provider_name": provider_name,
+            "provider_message_id": provider_message_id,
+        }
     except Exception as exc:
         registrar_envio(
             empresa_id=empresa_id,

@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 import type { PmgResumo } from "@/lib/types";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { sendWhatsAppMessage, WhatsAppError } from "@/lib/server/whatsapp";
 
 export class PmgDeliveryError extends Error {
   constructor(message: string) {
@@ -64,31 +65,6 @@ async function sendEmail(destinatario: string, assunto: string, corpo: string): 
   });
 }
 
-async function sendWhatsApp(destinatario: string, mensagem: string): Promise<void> {
-  const url = process.env.WHATSAPP_API_URL;
-  if (!url) {
-    throw new PmgDeliveryError(
-      "WhatsApp não configurado. Defina WHATSAPP_API_URL e WHATSAPP_API_TOKEN na Vercel.",
-    );
-  }
-
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (process.env.WHATSAPP_API_TOKEN) {
-    headers.Authorization = `Bearer ${process.env.WHATSAPP_API_TOKEN}`;
-  }
-
-  const res = await fetch(url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ number: destinatario, message: mensagem }),
-  });
-
-  if (!res.ok) {
-    const text = (await res.text()).slice(0, 200);
-    throw new PmgDeliveryError(`WhatsApp API erro ${res.status}: ${text}`);
-  }
-}
-
 async function registrarEnvio(params: {
   empresa_id: string;
   periodo_inicio: string;
@@ -98,6 +74,9 @@ async function registrarEnvio(params: {
   status: string;
   enviado_por?: string | null;
   erro_mensagem?: string | null;
+  provider_name?: string | null;
+  provider_message_id?: string | null;
+  confirmado_em?: string | null;
 }) {
   const supabase = getSupabaseAdmin();
   await supabase.from("envios_pmg").insert({
@@ -109,6 +88,9 @@ async function registrarEnvio(params: {
     status: params.status,
     enviado_por: params.enviado_por ?? null,
     erro_mensagem: params.erro_mensagem ?? null,
+    provider_name: params.provider_name ?? null,
+    provider_message_id: params.provider_message_id ?? null,
+    confirmado_em: params.confirmado_em ?? null,
   });
 }
 
@@ -127,25 +109,49 @@ export async function enviarPmg(params: {
   const assunto = `ACC Nomad — PMG ${params.periodo} — ${params.empresa_nome}`;
 
   try {
+    let providerName: string | null = null;
+    let providerMessageId: string | null = null;
+    let destinatarioFinal = params.destinatario;
+
     if (params.canal === "email") {
       await sendEmail(params.destinatario, assunto, corpo);
     } else if (params.canal === "whatsapp") {
-      await sendWhatsApp(params.destinatario, corpo);
+      try {
+        const wa = await sendWhatsAppMessage(params.destinatario, corpo);
+        providerName = wa.provider;
+        providerMessageId = wa.messageId;
+        destinatarioFinal = wa.normalizedNumber;
+      } catch (err) {
+        const message =
+          err instanceof WhatsAppError ? err.message : err instanceof Error ? err.message : String(err);
+        throw new PmgDeliveryError(message);
+      }
     } else {
       throw new PmgDeliveryError(`Canal inválido: ${params.canal}`);
     }
+
+    const confirmadoEm = new Date().toISOString();
 
     await registrarEnvio({
       empresa_id: params.empresa_id,
       periodo_inicio: params.periodo_inicio,
       periodo_fim: params.periodo_fim,
       canal: params.canal,
-      destinatario: params.destinatario,
+      destinatario: destinatarioFinal,
       status: "enviado",
       enviado_por: params.enviado_por,
+      provider_name: providerName,
+      provider_message_id: providerMessageId,
+      confirmado_em: confirmadoEm,
     });
 
-    return { status: "enviado", canal: params.canal, destinatario: params.destinatario };
+    return {
+      status: "enviado",
+      canal: params.canal,
+      destinatario: destinatarioFinal,
+      provider_name: providerName,
+      provider_message_id: providerMessageId,
+    };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await registrarEnvio({

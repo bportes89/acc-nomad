@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Building2, CheckCircle2, ChevronRight } from "lucide-react";
+import { formatSupabaseError } from "@/lib/format-api-error";
 import { createClient } from "@/lib/supabase/client";
 import {
   SEGMENTOS,
@@ -71,7 +72,7 @@ export function EmpresaOnboarding({
       .single();
 
     if (error || !empresa) {
-      setMessage(error?.message ?? "Erro ao criar empresa.");
+      setMessage(formatSupabaseError(error?.message ?? "Erro ao criar empresa."));
       setLoading(false);
       return;
     }
@@ -82,7 +83,7 @@ export function EmpresaOnboarding({
     });
 
     if (membroError) {
-      setMessage(membroError.message);
+      setMessage(formatSupabaseError(membroError.message));
       setLoading(false);
       return;
     }
@@ -108,7 +109,7 @@ export function EmpresaOnboarding({
       .eq("id", empresaId);
 
     if (error) {
-      setMessage(error.message);
+      setMessage(formatSupabaseError(error.message));
     } else {
       setMessage("Instruções salvas!");
       router.refresh();

@@ -59,6 +59,7 @@ class Settings(BaseSettings):
 
     whatsapp_api_url: str = ""
     whatsapp_api_token: str = ""
+    whatsapp_provider: str = "generic"
 
 
 settings = Settings()

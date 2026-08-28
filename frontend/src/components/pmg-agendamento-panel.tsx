@@ -11,9 +11,11 @@ import type { Empresa, PmgAgendamento } from "@/lib/types";
 export function PmgAgendamentoPanel({
   empresas,
   agendamentos: initial,
+  whatsappDisponivel = false,
 }: {
   empresas: Empresa[];
   agendamentos: PmgAgendamento[];
+  whatsappDisponivel?: boolean;
 }) {
   const router = useRouter();
   const [empresaId, setEmpresaId] = useState(empresas[0]?.id ?? "");
@@ -169,7 +171,9 @@ export function PmgAgendamentoPanel({
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
           >
             <option value="email">E-mail</option>
-            <option value="whatsapp">WhatsApp</option>
+            <option value="whatsapp" disabled={!whatsappDisponivel}>
+              WhatsApp{whatsappDisponivel ? "" : " (configurar depois)"}
+            </option>
           </select>
         </div>
         <div>
