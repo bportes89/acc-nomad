@@ -40,7 +40,7 @@ async def root() -> dict[str, str]:
 
 
 @app.get("/health")
-async def health() -> dict[str, str]:
+async def health() -> dict[str, str | bool]:
     from acc_nomad.services.llm_providers import active_provider_name
 
     return {
