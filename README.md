@@ -56,9 +56,21 @@ WHATSAPP_API_URL=https://sua-api/send
 WHATSAPP_API_TOKEN=token
 ```
 
-### Claude (classificação IA)
+### Anthropic Claude (classificação IA)
 
-Adicione `ANTHROPIC_API_KEY` no `backend/.env`. Sem a chave, usa extrator fallback + fornecedores cadastrados.
+1. Crie uma API key em [console.anthropic.com](https://console.anthropic.com/settings/keys)
+2. Configure no `backend/.env` (local) e no **Render** (produção):
+
+```env
+LLM_PROVIDER=anthropic
+ANTHROPIC_API_KEY=sk-ant-api03-...
+ANTHROPIC_MODEL=claude-sonnet-4-20250514
+```
+
+3. Reinicie o backend e confira: `GET /health` → `"llm_provider": "anthropic"`
+4. Faça upload de um extrato PDF em `/upload`
+
+Sem a chave, usa extrator fallback + fornecedores cadastrados (menos preciso).
 
 1. Crie um projeto em [supabase.com](https://supabase.com)
 2. SQL Editor → execute `supabase/migrations/001_initial_schema.sql`

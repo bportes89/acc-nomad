@@ -77,7 +77,8 @@ async def process_extrato_pdf(
 
         if not ordered:
             raise ProcessingError(
-                "Nenhum lançamento extraído do PDF. Verifique o arquivo ou configure uma LLM (GEMINI_API_KEY ou GROQ_API_KEY)."
+                "Nenhum lançamento extraído do PDF. Verifique o arquivo ou configure "
+                "ANTHROPIC_API_KEY com LLM_PROVIDER=anthropic no backend (Render)."
             )
 
         saldo_result = validate_saldo(full_text, ordered, bank_rules)

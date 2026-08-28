@@ -116,8 +116,9 @@ CRON_SECRET=outra-chave-para-vercel-cron
 NEXT_PUBLIC_API_URL=https://api.seudominio.com
 CORS_ORIGINS=https://app.seudominio.com
 
-LLM_PROVIDER=auto
-GEMINI_API_KEY=...
+LLM_PROVIDER=anthropic
+ANTHROPIC_API_KEY=sk-ant-...
+ANTHROPIC_MODEL=claude-sonnet-4-20250514
 ```
 
 Gere `API_SECRET` com:
@@ -150,8 +151,9 @@ Repositório: **https://github.com/bportes89/acc-nomad** (branch `main`)
    | `NEXT_PUBLIC_API_URL` | `https://api.seudominio.com` |
    | `API_SECRET` | chave longa (mesma nos dois serviços) |
    | `CORS_ORIGINS` | `https://app.seudominio.com` |
-   | `LLM_PROVIDER` | `auto` |
-   | `GEMINI_API_KEY` | (opcional) |
+   | `LLM_PROVIDER` | `anthropic` |
+   | `ANTHROPIC_API_KEY` | chave em console.anthropic.com |
+   | `ANTHROPIC_MODEL` | `claude-sonnet-4-20250514` (opcional) |
 
 6. **Domains** (aba Domains de cada serviço no Compose):
    - `frontend` → porta **3000** → `app.seudominio.com` → Enable HTTPS
@@ -217,7 +219,7 @@ Health check: `GET /health`
 | Upload falha 422 Supabase | `SUPABASE_SERVICE_ROLE_KEY` inválida | Corrigir env do backend |
 | CORS error | Origem não listada | `CORS_ORIGINS=https://app.seudominio.com` |
 | Recuperar senha não funciona | Redirect URL no Supabase | Adicionar URLs da seção 1 |
-| LLM `fallback` no /health | Sem chave Gemini/Groq | Configurar chaves ou aceitar fallback |
+| LLM `fallback` no /health | Sem `ANTHROPIC_API_KEY` no Render | Definir `LLM_PROVIDER=anthropic` + chave |
 
 ---
 

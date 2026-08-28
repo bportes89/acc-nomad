@@ -9,7 +9,7 @@ from acc_nomad.models import BankCode, Transaction, TransactionNature
 from acc_nomad.services.bank_rules import BankRules, get_bank_rules
 from acc_nomad.services.fallback_extractor import extract_fallback
 from acc_nomad.services.fornecedor_matcher import FornecedorMatch, apply_fornecedor_categories
-from acc_nomad.services.llm_providers import active_provider_name, generate_json
+from acc_nomad.services.llm_providers import LlmCallError, active_provider_name, generate_json
 
 DEFAULT_CATEGORIES = [
     ("Fornecedor / Revenda", "custo variável"),
@@ -131,7 +131,11 @@ def extract_and_classify(
         f"Texto do extrato:\n{sample_text[:12000]}"
     )
 
-    payload = generate_json(prompt, user_content)
+    try:
+        payload = generate_json(prompt, user_content)
+    except LlmCallError as exc:
+        raise RuntimeError(str(exc)) from exc
+
     transactions = [_to_transaction(item) for item in payload.get("transactions", [])]
 
     if transactions:
