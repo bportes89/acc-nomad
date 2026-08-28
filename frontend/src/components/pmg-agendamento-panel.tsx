@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarClock, Play } from "lucide-react";
+import { formatApiError } from "@/lib/format-api-error";
 import { createClient } from "@/lib/supabase/client";
 import { DIAS_SEMANA, diaSemanaLabel } from "@/lib/pmg-schedule";
 import type { Empresa, PmgAgendamento } from "@/lib/types";
@@ -75,12 +76,14 @@ export function PmgAgendamentoPanel({
     const res = await fetch("/api/pmg/disparo-semanal?force=true", { method: "POST" });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      setMessage(data.error || data.detail || "Erro no disparo");
+      setMessage(formatApiError(data.error ?? data.detail, "Erro no disparo semanal"));
     } else {
       const ok = data.enviados?.length ?? 0;
       const erros = data.erros?.length ?? 0;
+      const detalheErros =
+        erros > 0 && data.erros?.[0]?.erro ? ` — ${data.erros[0].erro}` : "";
       setMessage(
-        `Disparo concluído (${data.periodo}): ${ok} enviado(s), ${erros} erro(s).`,
+        `Disparo concluído (${data.periodo}): ${ok} enviado(s), ${erros} erro(s)${detalheErros}.`,
       );
       router.refresh();
     }

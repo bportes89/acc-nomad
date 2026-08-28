@@ -52,7 +52,9 @@ export async function updateSession(request: NextRequest) {
     pathname === "/recuperar-senha" ||
     pathname === "/auth/reset-password";
 
-  if (!user && !isAuthPage && !isPublicAuthFlow && pathname !== "/") {
+  const isCronRoute = pathname === "/api/pmg/cron-semanal";
+
+  if (!user && !isAuthPage && !isPublicAuthFlow && !isCronRoute && pathname !== "/") {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

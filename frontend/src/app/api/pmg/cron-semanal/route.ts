@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+import { runWeeklyPmgDispatch } from "@/lib/server/pmg-scheduler";
+
+export const maxDuration = 60;
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -8,27 +11,12 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const apiUrl =
-    process.env.API_URL ||
-    process.env.NEXT_PUBLIC_API_URL ||
-    "http://localhost:8000";
-  const apiSecret = process.env.API_SECRET || "";
-
-  const res = await fetch(`${apiUrl}/api/pmg/disparo-semanal`, {
-    method: "POST",
-    headers: {
-      "X-Api-Secret": apiSecret,
-    },
-  });
-
-  const data = await res.json().catch(() => ({}));
-
-  if (!res.ok) {
-    return NextResponse.json(
-      { error: data.detail || "Erro no disparo semanal" },
-      { status: res.status },
-    );
+  try {
+    const result = await runWeeklyPmgDispatch({ force: false });
+    return NextResponse.json(result);
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Erro no disparo semanal";
+    return NextResponse.json({ error: message }, { status: 422 });
   }
-
-  return NextResponse.json(data);
 }

@@ -7,6 +7,7 @@ import { calcularPmg, toExportRows } from "@/lib/pmg";
 import { exportFluxoCaixaCsv } from "@/lib/export-csv";
 import { exportFluxoCaixaXlsx } from "@/lib/export-xlsx";
 import { createClient } from "@/lib/supabase/client";
+import { formatApiError } from "@/lib/format-api-error";
 import type { Empresa, EnvioPmg, Lancamento, TesourariaLancamento } from "@/lib/types";
 
 export function PmgPanel({
@@ -100,7 +101,7 @@ export function PmgPanel({
 
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      setMessage(data.error || data.detail || "Erro ao enviar PMG");
+      setMessage(formatApiError(data.error ?? data.detail, "Erro ao enviar PMG"));
     } else {
       setMessage(`PMG enviado por ${canal} para ${destinatario}`);
     }
