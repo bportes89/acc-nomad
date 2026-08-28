@@ -130,7 +130,7 @@ def extract_and_classify(
         f"Segmento: {segmento or 'comercio'}\n"
         f"Instrução personalizada: {instrucao_personalizada or 'nenhuma'}\n\n"
         f"Fornecedores cadastrados:\n{fornecedores_txt}\n\n"
-        f"Texto do extrato:\n{sample_text[:12000]}"
+        f"Texto do extrato:\n{sample_text[:20000]}"
     )
 
     payload = generate_json(prompt, user_content)

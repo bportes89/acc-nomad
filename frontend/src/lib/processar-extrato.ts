@@ -20,7 +20,7 @@ export async function processarExtratoNoBackend(
   const apiUrl = getPublicApiUrl();
 
   onStatus?.(
-    "Enviando PDF ao servidor… Pode levar até 2 min (IA + cold start no Render).",
+    "Processando PDF com IA… Extratos grandes podem levar até 5 min — não feche a página.",
   );
 
   try {
@@ -30,14 +30,14 @@ export async function processarExtratoNoBackend(
         Authorization: `Bearer ${accessToken}`,
       },
       body: formData,
-      signal: AbortSignal.timeout(180_000),
+      signal: AbortSignal.timeout(360_000),
     });
   } catch (err) {
     const isTimeout =
       err instanceof DOMException && err.name === "TimeoutError";
     if (isTimeout) {
       throw new Error(
-        "O processamento passou de 3 minutos. Tente um PDF menor ou aguarde e tente de novo.",
+        "O processamento passou de 5 minutos. Tente um PDF menor ou aguarde e tente de novo.",
       );
     }
     throw new Error(

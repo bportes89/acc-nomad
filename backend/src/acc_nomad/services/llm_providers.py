@@ -169,7 +169,7 @@ def _call_openai_compatible(
 def _call_anthropic(system: str, user: str) -> str:
     from anthropic import Anthropic
 
-    client = Anthropic(api_key=settings.anthropic_api_key)
+    client = Anthropic(api_key=settings.anthropic_api_key, timeout=120.0)
     response = client.messages.create(
         model=settings.anthropic_model,
         max_tokens=16384,
