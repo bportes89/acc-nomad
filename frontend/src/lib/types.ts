@@ -114,6 +114,17 @@ export interface EnvioPmg {
   created_at: string;
 }
 
+export interface PmgAgendamento {
+  id: string;
+  empresa_id: string;
+  canal: "email" | "whatsapp";
+  destinatario: string;
+  dia_semana: number;
+  ativo: boolean;
+  ultimo_envio_em: string | null;
+  created_at: string;
+}
+
 export interface LancamentoExportavel {
   data: string;
   descricao: string;

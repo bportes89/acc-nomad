@@ -12,6 +12,7 @@ from acc_nomad.models import ProcessExtratoRequest
 from acc_nomad.models_pmg import EnviarPmgRequest
 from acc_nomad.pipeline import ProcessingError, process_extrato_pdf
 from acc_nomad.services.pmg_delivery import DeliveryError, enviar_pmg
+from acc_nomad.services.pmg_scheduler import run_weekly_pmg_dispatch
 
 app = FastAPI(
     title="ACC Nomad API",
@@ -101,4 +102,11 @@ async def enviar_pmg_relatorio(body: EnviarPmgRequest) -> JSONResponse:
     except DeliveryError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
+    return JSONResponse(content=result)
+
+
+@app.post("/api/pmg/disparo-semanal", dependencies=[Depends(verify_api_secret)])
+async def disparo_semanal_pmg(force: bool = False) -> JSONResponse:
+    """Cron semanal: envia PMG do mês anterior para agendamentos ativos."""
+    result = await run_weekly_pmg_dispatch(force=force)
     return JSONResponse(content=result)

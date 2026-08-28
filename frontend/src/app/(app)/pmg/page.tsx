@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { PmgPanel } from "@/components/pmg-panel";
-import type { Empresa, EnvioPmg, Lancamento, TesourariaLancamento } from "@/lib/types";
+import { PmgAgendamentoPanel } from "@/components/pmg-agendamento-panel";
+import type { Empresa, EnvioPmg, Lancamento, PmgAgendamento, TesourariaLancamento } from "@/lib/types";
 
 export default async function PmgPage() {
   const supabase = await createClient();
@@ -10,6 +11,7 @@ export default async function PmgPage() {
     { data: lancamentos },
     { data: tesouraria },
     { data: envios },
+    { data: agendamentos },
   ] = await Promise.all([
     supabase.from("empresas").select("*"),
     supabase
@@ -26,6 +28,10 @@ export default async function PmgPage() {
       .select("*")
       .order("created_at", { ascending: false })
       .limit(20),
+    supabase
+      .from("pmg_agendamentos")
+      .select("*")
+      .order("created_at", { ascending: false }),
   ]);
 
   return (
@@ -35,7 +41,11 @@ export default async function PmgPage() {
         Painel de Metas Gerenciais — exportação e envio por e-mail/WhatsApp
       </p>
 
-      <div className="mt-8">
+      <div className="mt-8 space-y-8">
+        <PmgAgendamentoPanel
+          empresas={(empresas as Empresa[]) ?? []}
+          agendamentos={(agendamentos as PmgAgendamento[]) ?? []}
+        />
         <PmgPanel
           empresas={(empresas as Empresa[]) ?? []}
           lancamentos={(lancamentos as Lancamento[]) ?? []}

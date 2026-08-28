@@ -4,12 +4,72 @@ Guia para publicar **frontend (Next.js)** + **backend (FastAPI)** no EasyPanel c
 
 ## Pré-requisitos
 
-- Servidor com [EasyPanel](https://easypanel.io) instalado
-- Repositório Git do projeto (GitHub, GitLab, etc.)
+- Servidor VPS com Ubuntu (22.04 ou 24.04) — **mín. 2 GB RAM**
+- [EasyPanel](https://easypanel.io) instalado (veja seção 0 abaixo)
+- Repositório Git: `https://github.com/bportes89/acc-nomad.git`
 - Projeto Supabase com migrations **001–007** aplicadas
 - Dois subdomínios (recomendado):
   - `app.seudominio.com` → frontend
   - `api.seudominio.com` → backend
+
+---
+
+## 0. Instalar EasyPanel (primeira vez)
+
+Se você **ainda não tem servidor**, contrate um VPS em qualquer provedor (Hostinger, DigitalOcean, Hetzner, Contabo, etc.):
+
+| Recurso | Mínimo recomendado |
+|---------|-------------------|
+| SO | Ubuntu 22.04 ou 24.04 (instalação limpa) |
+| RAM | 2 GB (4 GB confortável) |
+| Disco | 20 GB SSD |
+| Portas | 22 (SSH), 80, 443, 3000 (painel) |
+
+### 0.1 Acessar o servidor via SSH
+
+No PowerShell (substitua pelo IP que o provedor enviou):
+
+```powershell
+ssh root@SEU_IP_DO_SERVIDOR
+```
+
+### 0.2 Instalar EasyPanel (comando oficial)
+
+No servidor, como **root**:
+
+```bash
+curl -sSL https://get.easypanel.io | sh
+```
+
+O script instala Docker + EasyPanel automaticamente (leva 2–5 min).
+
+Documentação oficial: https://easypanel.io/docs
+
+### 0.3 Abrir o painel
+
+No navegador:
+
+```
+http://SEU_IP_DO_SERVIDOR:3000
+```
+
+Na primeira vez, crie sua **conta admin** (e-mail + senha).
+
+> Depois você pode apontar um domínio tipo `panel.seudominio.com` para o IP e ativar HTTPS no EasyPanel.
+
+### 0.4 Firewall (se o painel não abrir)
+
+No servidor:
+
+```bash
+ufw allow 22
+ufw allow 80
+ufw allow 443
+ufw allow 3000
+ufw enable
+```
+
+Também libere essas portas no **painel do provedor** (Security Group / Firewall do VPS).
 
 ---
 
@@ -24,6 +84,7 @@ No **SQL Editor**, execute na ordem:
 5. `005_onboarding_plano_contas.sql`
 6. `006_reports_suporte.sql`
 7. `007_extrato_saldo_validacao.sql`
+8. `008_pmg_agendamentos.sql` (envio semanal automático do PMG)
 
 ### Auth — URLs de produção
 
@@ -51,6 +112,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://SEU_PROJETO.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 
 API_SECRET=uma-chave-longa-aleatoria-min-32-chars
+CRON_SECRET=outra-chave-para-vercel-cron
 NEXT_PUBLIC_API_URL=https://api.seudominio.com
 CORS_ORIGINS=https://app.seudominio.com
 
@@ -66,27 +128,44 @@ Gere `API_SECRET` com:
 
 ---
 
-## 3. EasyPanel — opção A: Compose (recomendado)
+## 3. EasyPanel — deploy do ACC Nomad (Compose)
 
-1. **Projects → New** → nome `acc-nomad`
+Repositório: **https://github.com/bportes89/acc-nomad** (branch `main`)
+
+1. **Projects → Create** → nome `acc-nomad`
 2. **Add Service → Compose**
-3. **Source:** Git — URL do repositório + branch
+3. **Source → GitHub**
+   - Conecte sua conta GitHub (autorize o EasyPanel)
+   - Repo: `bportes89/acc-nomad`
+   - Branch: `main`
 4. **Compose file:** `docker-compose.prod.yml`
-5. **Environment:** cole todas as variáveis da seção 2
-6. **Domains:**
-   - Serviço `frontend` → porta `3000` → `app.seudominio.com`
-   - Serviço `backend` → porta `8000` → `api.seudominio.com`
-7. **Deploy**
+5. **Environment** — adicione cada variável (botão Add):
 
-### Verificar
+   | Variável | Valor |
+   |----------|-------|
+   | `SUPABASE_URL` | URL do Supabase |
+   | `SUPABASE_SERVICE_ROLE_KEY` | chave secret do Supabase |
+   | `NEXT_PUBLIC_SUPABASE_URL` | mesma URL |
+   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon key |
+   | `NEXT_PUBLIC_API_URL` | `https://api.seudominio.com` |
+   | `API_SECRET` | chave longa (mesma nos dois serviços) |
+   | `CORS_ORIGINS` | `https://app.seudominio.com` |
+   | `LLM_PROVIDER` | `auto` |
+   | `GEMINI_API_KEY` | (opcional) |
 
-```bash
-curl https://api.seudominio.com/health
-# {"status":"ok","version":"...","llm_provider":"..."}
+6. **Domains** (aba Domains de cada serviço no Compose):
+   - `frontend` → porta **3000** → `app.seudominio.com` → Enable HTTPS
+   - `backend` → porta **8000** → `api.seudominio.com` → Enable HTTPS
+7. **Deploy** (botão verde)
 
-# Abra no browser
-https://app.seudominio.com/login
-```
+### DNS (no Registro.br, Cloudflare, etc.)
+
+Antes dos domínios funcionarem, crie registros **A** apontando para o IP do VPS:
+
+| Registro | Tipo | Valor |
+|----------|------|-------|
+| `app` | A | IP do VPS |
+| `api` | A | IP do VPS |
 
 ---
 
