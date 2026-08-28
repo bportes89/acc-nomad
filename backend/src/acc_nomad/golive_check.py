@@ -9,8 +9,8 @@ from pathlib import Path
 from acc_nomad.models import BankCode
 from acc_nomad.services.bank_detector import detect_bank_from_text
 from acc_nomad.services.classifier import FALLBACK_CATEGORY, extract_and_classify
-from acc_nomad.services.fallback_extractor import extract_all_local
 from acc_nomad.services.pdf_analyzer import analyze_pdf, extract_full_text
+from acc_nomad.services.reliable_extraction import extract_transactions_local
 from acc_nomad.services.saldo_validator import validate_saldo
 from acc_nomad.services.bank_rules import get_bank_rules
 from acc_nomad.services.rule_classifier import classify_with_rules
@@ -65,10 +65,18 @@ def run_golive_check(
     full_text = extract_full_text(pdf_bytes)
     t1 = time.perf_counter()
 
-    local_txs = extract_all_local(full_text)
-    t2 = time.perf_counter()
+    local_txs: list = []
+    t2 = t1
 
     if skip_llm:
+        outcome = extract_transactions_local(
+            pdf_bytes=pdf_bytes,
+            full_text=full_text,
+            bank=bank,
+            default_category="Receita de vendas",
+        )
+        local_txs = outcome.transactions
+        t2 = time.perf_counter()
         transactions = classify_with_rules(local_txs, default_receita="Receita de vendas")
     else:
         transactions = extract_and_classify(

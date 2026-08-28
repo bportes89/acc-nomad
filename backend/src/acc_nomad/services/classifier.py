@@ -11,7 +11,9 @@ from acc_nomad.services.bank_rules import BankRules, get_bank_rules
 from acc_nomad.services.fallback_extractor import extract_all_local, filter_transaction_candidate_lines
 from acc_nomad.services.fornecedor_matcher import FornecedorMatch, apply_fornecedor_categories
 from acc_nomad.services.llm_providers import active_provider_name, generate_json, generate_json_fast
+from acc_nomad.services.reliable_extraction import extract_transactions_local
 from acc_nomad.services.rule_classifier import classify_with_rules
+from acc_nomad.services.transaction_utils import prepare_transactions
 
 DEFAULT_CATEGORIES = [
     ("Fornecedor / Revenda", "custo variável"),
@@ -145,21 +147,22 @@ def extract_and_classify(
 ) -> list[Transaction]:
     fornecedores = fornecedores or []
     receita_default = _default_receita_category(plano_contas)
-
+    rules = get_bank_rules(bank)
     transactions: list[Transaction] = []
-    if pdf_bytes and bank == BankCode.BRADESCO:
-        from acc_nomad.services.bradesco_mensal_extractor import (
-            extract_bradesco_mensal,
-            is_bradesco_mensal,
-        )
 
-        if is_bradesco_mensal(sample_text):
-            transactions = extract_bradesco_mensal(
-                pdf_bytes, default_category=receita_default
-            )
+    if pdf_bytes:
+        outcome = extract_transactions_local(
+            pdf_bytes=pdf_bytes,
+            full_text=sample_text,
+            bank=bank,
+            default_category=receita_default,
+        )
+        transactions = outcome.transactions
 
     if not transactions:
         transactions = extract_all_local(sample_text, default_category=receita_default)
+        transactions = prepare_transactions(transactions, sample_text, rules)
+
     if transactions:
         transactions = apply_fornecedor_categories(transactions, fornecedores)
         transactions = classify_with_rules(transactions, default_receita=receita_default)
@@ -173,7 +176,7 @@ def extract_and_classify(
     if active_provider_name() == "fallback":
         return []
 
-    return _extract_with_full_llm(
+    llm_txs = _extract_with_full_llm(
         sample_text=sample_text,
         bank=bank,
         segmento=segmento,
@@ -181,6 +184,7 @@ def extract_and_classify(
         fornecedores=fornecedores,
         plano_contas=plano_contas,
     )
+    return prepare_transactions(llm_txs, sample_text, rules)
 
 
 def _classify_batch(

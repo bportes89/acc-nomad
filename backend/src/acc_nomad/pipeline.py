@@ -11,11 +11,11 @@ from acc_nomad.models import (
 )
 from acc_nomad.services.bank_detector import detect_bank_from_text
 from acc_nomad.services.bank_rules import get_bank_rules
-from acc_nomad.services.bradesco_mensal_extractor import is_bradesco_mensal
 from acc_nomad.services.classifier import extract_and_classify
 from acc_nomad.services.organizer import sort_transactions
 from acc_nomad.services.pdf_analyzer import analyze_pdf, extract_full_text
 from acc_nomad.services.fornecedor_matcher import FornecedorMatch, apply_fornecedor_categories
+from acc_nomad.services.reliable_extraction import extract_transactions_local
 from acc_nomad.services.saldo_validator import validate_saldo
 from acc_nomad.services.supabase_client import (
     SupabaseNotConfiguredError,
@@ -25,7 +25,6 @@ from acc_nomad.services.supabase_client import (
     update_extrato_status,
     update_extrato_saldo_validation,
 )
-from acc_nomad.services.transaction_utils import dedupe_transactions
 
 
 class ProcessingError(RuntimeError):
@@ -70,13 +69,7 @@ def process_extrato_pdf(
             pdf_bytes=pdf_bytes,
         )
 
-        if is_bradesco_mensal(full_text):
-            # Extrator mensal já deduplica por página/linha; dedupe genérico
-            # remove tarifas/PIX legítimos repetidos no mesmo dia.
-            ordered = list(all_transactions)
-        else:
-            ordered = dedupe_transactions(all_transactions)
-        ordered = sort_transactions(ordered, bank)
+        ordered = sort_transactions(all_transactions, bank)
         ordered = apply_fornecedor_categories(ordered, fornecedores)
 
         if not ordered:
@@ -91,6 +84,16 @@ def process_extrato_pdf(
             )
 
         saldo_result = validate_saldo(full_text, ordered, bank_rules)
+
+        if (
+            saldo_result.saldo_inicial is not None
+            and saldo_result.saldo_final is not None
+            and not saldo_result.ok
+        ):
+            saldo_result.warnings.append(
+                "Extrato salvo para revisão: saldo calculado não fecha com o PDF. "
+                "Confira lançamentos antes de enviar ao PMG."
+            )
 
         save_transactions(
             extrato_id=extrato_id,

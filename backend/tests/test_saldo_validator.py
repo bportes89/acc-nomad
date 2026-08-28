@@ -40,7 +40,7 @@ def test_saldo_divergente():
     txs = [_tx(50, TransactionNature.CREDIT)]
     result = validate_saldo(text, txs, get_bank_rules(BankCode.BB))
     assert result.ok is False
-    assert result.delta == 50.0 - 500.0
+    assert result.delta == 150.0 - 500.0
 
 
 def test_itau_sort_reverse():

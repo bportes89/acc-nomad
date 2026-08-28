@@ -127,7 +127,7 @@ def extract_fallback(
         if current_date and not _is_noise_line(line):
             description_parts.append(line)
 
-    return transactions[:2000]
+    return transactions
 
 
 def extract_all_local(
