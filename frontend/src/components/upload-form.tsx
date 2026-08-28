@@ -89,6 +89,7 @@ export function UploadForm({ empresas }: { empresas: Empresa[] }) {
     let totalLancamentos = 0;
 
     let saldoDivergente = 0;
+    let lastError = "";
 
     for (const file of Array.from(files)) {
       const { data: extrato, error: extratoError } = await supabase
@@ -104,7 +105,8 @@ export function UploadForm({ empresas }: { empresas: Empresa[] }) {
 
       if (extratoError || !extrato) {
         erro += 1;
-        setMessage(`Erro ao registrar extrato: ${extratoError?.message}`);
+        lastError = `Erro ao registrar extrato: ${extratoError?.message}`;
+        setMessage(lastError);
         continue;
       }
 
@@ -134,7 +136,8 @@ export function UploadForm({ empresas }: { empresas: Empresa[] }) {
           .update({ status: "erro", erro_mensagem: msg })
           .eq("id", extrato.id);
         erro += 1;
-        setMessage(msg);
+        lastError = msg;
+        setMessage(lastError);
         continue;
       }
 
@@ -149,7 +152,8 @@ export function UploadForm({ empresas }: { empresas: Empresa[] }) {
           .update({ status: "erro", erro_mensagem: String(detail) })
           .eq("id", extrato.id);
         erro += 1;
-        setMessage(detail);
+        lastError = detail;
+        setMessage(lastError);
         continue;
       }
 
@@ -168,8 +172,8 @@ export function UploadForm({ empresas }: { empresas: Empresa[] }) {
     if (ok > 0) {
       await fetchAndDownloadXlsx(successIds);
       setMessage("");
-    } else if (!message) {
-      setMessage("Nenhum extrato processado com sucesso.");
+    } else {
+      setMessage(lastError || "Nenhum extrato processado com sucesso.");
     }
 
     setFiles(null);

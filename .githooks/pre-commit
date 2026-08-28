@@ -1,0 +1,2 @@
+#!/bin/sh
+python scripts/check-critical-files.py || exit 1

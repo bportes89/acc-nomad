@@ -1,5 +1,11 @@
 export function getPublicApiUrl(): string {
-  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const url = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  if (typeof window !== "undefined" && url.includes("localhost") && !window.location.hostname.includes("localhost")) {
+    throw new Error(
+      "NEXT_PUBLIC_API_URL não configurada na Vercel. Defina https://acc-nomad.onrender.com e redeploy.",
+    );
+  }
+  return url;
 }
 
 async function waitForBackend(apiUrl: string, maxAttempts = 12): Promise<void> {
