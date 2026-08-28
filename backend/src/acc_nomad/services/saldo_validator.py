@@ -119,6 +119,11 @@ def _extract_saldo_by_keywords(text: str, keywords: tuple[str, ...]) -> float | 
 
 def _extract_saldo_final(text: str, keywords: tuple[str, ...]) -> float | None:
     upper = text.upper()
+    if "DEMONSTRATIVO MENSAL" in upper:
+        running = _extract_bradesco_running_saldo(text)
+        if running is not None:
+            return running
+
     last_amount: float | None = None
 
     for keyword in keywords:
@@ -132,8 +137,26 @@ def _extract_saldo_final(text: str, keywords: tuple[str, ...]) -> float | None:
     if last_amount is not None:
         return last_amount
 
-    trailing = list(AMOUNT_BR_RE.finditer(text))
-    if len(trailing) >= 2:
-        return parse_br_amount(trailing[-1].group(1))
-
     return None
+
+
+def _extract_bradesco_running_saldo(text: str) -> float | None:
+    """Último saldo corrente da coluna SALDO (Bradesco demonstrativo mensal)."""
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    last_saldo: float | None = None
+
+    for i, line in enumerate(lines):
+        if "SALDO ANTERIOR" in line.upper():
+            continue
+        match = re.match(r"^(\d{1,3}(?:\.\d{3})*,\d{2})$", line)
+        if not match:
+            continue
+        value = parse_br_amount(match.group(1))
+        if value < 50_000:
+            continue
+        prev = " ".join(lines[max(0, i - 3) : i]).upper()
+        if any(k in prev for k in ("SALDO ANTERIOR", "DEMONSTRATIVO", "CONTA CORRENTE")):
+            continue
+        last_saldo = value
+
+    return last_saldo

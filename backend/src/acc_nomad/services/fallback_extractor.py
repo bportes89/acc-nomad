@@ -20,6 +20,9 @@ INLINE_AMOUNT_RE = re.compile(
 )
 NEG_AMOUNT_RE = re.compile(r"^-\s*(\d{1,3}(?:\.\d{3})*,\d{2})\s*$")
 DATE_ONLY_RE = re.compile(r"^(\d{2})\s*/\s*(\d{2})\s*/\s*(\d{4})$")
+DATE_SHORT_ONLY_RE = re.compile(r"^(\d{2})\s*/\s*(\d{2})\s*/\s*(\d{2})$")
+AMOUNT_ONLY_RE = re.compile(r"^(\d{1,3}(?:\.\d{3})*,\d{2})$")
+DOCTO_LINE_RE = re.compile(r"^\d{4,8}$")
 RS_AMOUNT_RE = re.compile(r"R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2})")
 MP_ROW_RE = re.compile(
     r"^(\d{2}/\d{2}/\d{4})\s+(.+?)\s+(-?\s*R\$\s*\d{1,3}(?:\.\d{3})*,\d{2})\s*$"
@@ -39,8 +42,13 @@ AMOUNT_HINT_RE = re.compile(
 )
 
 DEBIT_HINTS = (
-    "PAGAMENTO", "DEBITO", "DÉBITO", "TARIFA", "TAXA", "SAQUE",
-    "ENVIO PIX", "COMPRA", "SAÍDA", "SAIDA",
+    "PAGAMENTO", "PAGTO", "DEBITO", "DÉBITO", "TARIFA", "TAXA", "SAQUE",
+    "ENVIO PIX", "COMPRA", "SAÍDA", "SAIDA", "COBRANCA", "COBRANÇA",
+)
+CREDIT_HINTS = (
+    "PIX RECEBIDO", "PIX QR", "LIQUIDACAO", "LIQUIDAÇÃO", "TED-", "TED ",
+    "VISA CREDITO", "VISA CRÉDITO", "MASTER CREDITO", "MASTER CRÉDITO",
+    "TRANSF CC", "CREDITO", "CRÉDITO", "DEPOSITO", "DEPÓSITO",
 )
 SALDO_KEYWORDS = (
     "SALDO ANTERIOR", "SALDO ANTER", "SALDO FINAL", "SALDO ATUAL",

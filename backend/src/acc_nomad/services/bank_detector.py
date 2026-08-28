@@ -31,6 +31,8 @@ BANK_ALIASES: dict[str, BankCode] = {
 
 def detect_bank_from_text(sample_text: str) -> BankCode:
     lowered = sample_text.lower()
+    if "demonstrativo mensal" in lowered and "conta corrente" in lowered:
+        return BankCode.BRADESCO
     for alias, code in BANK_ALIASES.items():
         if alias in lowered:
             return code
