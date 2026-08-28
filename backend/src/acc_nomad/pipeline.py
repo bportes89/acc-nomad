@@ -31,7 +31,7 @@ class ProcessingError(RuntimeError):
     pass
 
 
-async def process_extrato_pdf(
+def process_extrato_pdf(
     pdf_bytes: bytes,
     request: ProcessExtratoRequest,
 ) -> ProcessExtratoResponse:

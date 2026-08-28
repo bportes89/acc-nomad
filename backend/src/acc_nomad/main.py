@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -74,7 +76,7 @@ async def processar_extrato(
     )
 
     try:
-        result = await process_extrato_pdf(pdf_bytes, request)
+        result = await asyncio.to_thread(process_extrato_pdf, pdf_bytes, request)
     except ProcessingError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
