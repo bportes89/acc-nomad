@@ -119,6 +119,10 @@ def _extract_saldo_by_keywords(text: str, keywords: tuple[str, ...]) -> float | 
 
 def _extract_saldo_final(text: str, keywords: tuple[str, ...]) -> float | None:
     upper = text.upper()
+    total_saldo = _extract_total_movimentacao_saldo(text)
+    if total_saldo is not None:
+        return total_saldo
+
     if "DEMONSTRATIVO MENSAL" in upper:
         running = _extract_bradesco_running_saldo(text)
         if running is not None:
@@ -160,3 +164,18 @@ def _extract_bradesco_running_saldo(text: str) -> float | None:
         last_saldo = value
 
     return last_saldo
+
+
+def _extract_total_movimentacao_saldo(text: str) -> float | None:
+    """Bradesco: linha TOTAL DA MOVIMENTAÇÃO com crédito, débito e saldo final."""
+    pattern = re.compile(
+        r"TOTAL DA MOVIMENTA[^\n]*\n"
+        r"(\d{1,3}(?:\.\d{3})*,\d{2})\s*\n"
+        r"(\d{1,3}(?:\.\d{3})*,\d{2})\s*\n"
+        r"(\d{1,3}(?:\.\d{3})*,\d{2})",
+        re.IGNORECASE,
+    )
+    match = pattern.search(text)
+    if match:
+        return parse_br_amount(match.group(3))
+    return None

@@ -102,11 +102,18 @@ def chunk_pdf_pages(pdf_bytes: bytes, chunk_size: int = 5) -> list[bytes]:
         source.close()
 
 
-def extract_full_text(pdf_bytes: bytes, max_chars: int = 80000) -> str:
-    """Texto completo do PDF para validação de saldos."""
+def extract_full_text(pdf_bytes: bytes, max_chars: int = 250_000) -> str:
+    """Texto completo do PDF para extração e validação de saldos."""
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     try:
         parts = [page.get_text() for page in doc]
-        return "\n".join(parts)[:max_chars]
+        full = "\n".join(parts)
+        if len(full) <= max_chars:
+            return full
+        # Extratos longos: preserva início (cabeçalho/saldo anterior) + fim (totais)
+        head = "\n".join(parts[:4])
+        tail = "\n".join(parts[-4:])
+        merged = f"{head}\n...\n{tail}"
+        return merged if len(merged) <= max_chars else full[:max_chars]
     finally:
         doc.close()
