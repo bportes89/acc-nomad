@@ -15,7 +15,7 @@ from acc_nomad.services.transaction_utils import dedupe_transactions
 
 def main(pdf_path: Path) -> None:
     pdf_bytes = pdf_path.read_bytes()
-    text = extract_full_text(pdf_bytes)
+    text = extract_full_text_smart(pdf_bytes).text
     txs = extract_bradesco_mensal(pdf_bytes)
     deduped = dedupe_transactions(txs)
     rules = get_bank_rules(BankCode.BRADESCO)
