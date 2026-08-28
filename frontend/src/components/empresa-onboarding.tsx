@@ -60,35 +60,20 @@ export function EmpresaOnboarding({
       return;
     }
 
-    const { data: empresa, error } = await supabase
-      .from("empresas")
-      .insert({
-        nome: nome.trim(),
-        cnpj: cnpjDigits,
-        segmento,
-        instrucao_personalizada: instrucao.trim() || null,
-      })
-      .select("id")
-      .single();
+    const { data: empresaId, error } = await supabase.rpc("criar_empresa_onboarding", {
+      p_nome: nome.trim(),
+      p_cnpj: cnpjDigits,
+      p_segmento: segmento,
+      p_instrucao: instrucao.trim() || null,
+    });
 
-    if (error || !empresa) {
+    if (error || !empresaId) {
       setMessage(formatSupabaseError(error?.message ?? "Erro ao criar empresa."));
       setLoading(false);
       return;
     }
 
-    const { error: membroError } = await supabase.from("empresa_membros").insert({
-      empresa_id: empresa.id,
-      user_id: user.id,
-    });
-
-    if (membroError) {
-      setMessage(formatSupabaseError(membroError.message));
-      setLoading(false);
-      return;
-    }
-
-    setCreatedEmpresaId(empresa.id);
+    setCreatedEmpresaId(empresaId as string);
     setStep(3);
     setLoading(false);
     router.refresh();

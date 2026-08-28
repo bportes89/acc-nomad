@@ -1,7 +1,10 @@
 export function formatSupabaseError(message: string): string {
   const lower = message.toLowerCase();
+  if (lower.includes("criar_empresa_onboarding") || lower.includes("could not find the function")) {
+    return "Cadastro de empresa não configurado no banco. Avise o suporte para aplicar a migration 011 no Supabase.";
+  }
   if (lower.includes("row-level security") && lower.includes("empresas")) {
-    return "Não foi possível cadastrar a empresa: falta permissão no banco de dados (RLS). Avise o suporte para aplicar a migration 010 no Supabase.";
+    return "Não foi possível cadastrar a empresa: falta permissão no banco de dados (RLS). Avise o suporte para aplicar a migration 011 no Supabase.";
   }
   if (lower.includes("row-level security") && lower.includes("empresa_membros")) {
     return "Empresa criada, mas não foi possível vincular à sua conta. Avise o suporte (RLS empresa_membros).";
