@@ -46,14 +46,33 @@ Saída JSON com `"passed": true/false` e lista de `failures`.
 
 ### Teste de ouro — Bradesco 29 páginas
 
-PDF de referência (cliente Osvaldo):
+**Opção A — PDF sintético (no repo, sem Drive):**
 
+```powershell
+cd backend
+python scripts/gerar_extrato_bradesco_teste.py
+python scripts/benchmark_extrato.py "..\docs\EXTRATOS EXEMPLO\bradesco-sintetico-29p.pdf"
+```
+
+Arquivo gerado: `docs/EXTRATOS EXEMPLO/bradesco-sintetico-29p.pdf` (29 pág., ~230 lançamentos).
+
+**Opção B — PDF real do cliente (Drive pede autorização):**
+
+Peça ao Osvaldo/Nahim que:
+- compartilhe o arquivo **por e-mail/WhatsApp**, ou
+- libere o Drive para `brunoportes_jf@yahoo.com.br`, ou
+- use **qualquer extrato Bradesco** que você já tenha (ex.: o que travou no upload).
+
+Link de referência (requer permissão):  
 https://drive.google.com/file/d/1YbgklNMpB3YzQtysIQhQMnCwjQWfJjZw/view
 
-1. Baixe o PDF completo (não preview do Drive)
-2. Rode `benchmark_extrato.py`
-3. Faça upload em produção e compare contagem de lançamentos
-4. **Aceite:** contagem similar ao extrato manual + tempo < 90s
+**Opção C — Seu próprio PDF**
+
+Use o `EXTRATO_ME...pdf` ou `Brade...pdf` que você já tentou enviar no upload.
+
+1. Rode `benchmark_extrato.py` no arquivo local
+2. Faça upload em produção e compare contagem
+3. **Aceite:** `passed: true` no benchmark + fluxo upload → revisão → XLSX
 
 ### Teste Sicoob (já validado em produção)
 
