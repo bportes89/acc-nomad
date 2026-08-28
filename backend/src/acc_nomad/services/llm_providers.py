@@ -41,6 +41,9 @@ def generate_json(system: str, user: str) -> dict:
     try:
         text = _call_provider(provider, system, user)
         return _parse_json_payload(text)
+    except json.JSONDecodeError as exc:
+        logger.warning("LLM %s retornou JSON inválido: %s", provider, exc)
+        return {"transactions": []}
     except Exception as exc:
         logger.warning("LLM %s falhou: %s", provider, exc)
         if explicit:
@@ -169,7 +172,7 @@ def _call_anthropic(system: str, user: str) -> str:
     client = Anthropic(api_key=settings.anthropic_api_key)
     response = client.messages.create(
         model=settings.anthropic_model,
-        max_tokens=4096,
+        max_tokens=16384,
         system=system,
         messages=[{"role": "user", "content": user}],
     )
@@ -178,7 +181,76 @@ def _call_anthropic(system: str, user: str) -> str:
 
 def _parse_json_payload(text: str) -> dict:
     start = text.find("{")
-    end = text.rfind("}")
-    if start == -1 or end == -1:
+    if start == -1:
         raise LlmCallError("Resposta da LLM não contém JSON válido.")
-    return json.loads(text[start : end + 1])
+    end = text.rfind("}")
+    raw = text[start : end + 1] if end > start else text[start:]
+
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        salvaged = _salvage_transactions_json(raw)
+        if salvaged:
+            logger.info("JSON parcial recuperado: %d lançamentos", len(salvaged["transactions"]))
+            return salvaged
+        raise
+
+
+def _salvage_transactions_json(raw: str) -> dict | None:
+    """Extrai objetos completos de transactions[] quando o JSON veio truncado."""
+    key = '"transactions"'
+    idx = raw.find(key)
+    if idx == -1:
+        return None
+    arr_start = raw.find("[", idx)
+    if arr_start == -1:
+        return None
+
+    items: list[dict] = []
+    i = arr_start + 1
+    length = len(raw)
+
+    while i < length:
+        while i < length and raw[i] in " \n\r\t,":
+            i += 1
+        if i >= length or raw[i] == "]":
+            break
+        if raw[i] != "{":
+            break
+
+        depth = 0
+        obj_start = i
+        in_string = False
+        escape = False
+        closed = False
+
+        for j in range(i, length):
+            ch = raw[j]
+            if in_string:
+                if escape:
+                    escape = False
+                elif ch == "\\":
+                    escape = True
+                elif ch == '"':
+                    in_string = False
+                continue
+            if ch == '"':
+                in_string = True
+            elif ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    try:
+                        items.append(json.loads(raw[obj_start : j + 1]))
+                    except json.JSONDecodeError:
+                        pass
+                    i = j + 1
+                    closed = True
+                    break
+        if not closed:
+            break
+
+    if not items:
+        return None
+    return {"transactions": items}

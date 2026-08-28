@@ -9,7 +9,7 @@ from acc_nomad.models import BankCode, Transaction, TransactionNature
 from acc_nomad.services.bank_rules import BankRules, get_bank_rules
 from acc_nomad.services.fallback_extractor import extract_fallback
 from acc_nomad.services.fornecedor_matcher import FornecedorMatch, apply_fornecedor_categories
-from acc_nomad.services.llm_providers import LlmCallError, active_provider_name, generate_json
+from acc_nomad.services.llm_providers import active_provider_name, generate_json
 
 DEFAULT_CATEGORIES = [
     ("Fornecedor / Revenda", "custo variável"),
@@ -58,6 +58,8 @@ Regras:
 - Respeite instruções personalizadas
 - Não invente lançamentos ausentes no texto
 - category deve ser o nome exato de uma categoria listada acima
+- Retorne APENAS JSON válido (sem markdown). Descrições curtas.
+- Se houver muitos lançamentos, inclua todos em "transactions"
 """
 
 
@@ -131,12 +133,14 @@ def extract_and_classify(
         f"Texto do extrato:\n{sample_text[:12000]}"
     )
 
-    try:
-        payload = generate_json(prompt, user_content)
-    except LlmCallError as exc:
-        raise RuntimeError(str(exc)) from exc
+    payload = generate_json(prompt, user_content)
 
-    transactions = [_to_transaction(item) for item in payload.get("transactions", [])]
+    transactions: list[Transaction] = []
+    for item in payload.get("transactions", []):
+        try:
+            transactions.append(_to_transaction(item))
+        except (KeyError, ValueError, TypeError):
+            continue
 
     if transactions:
         return apply_fornecedor_categories(transactions, fornecedores)
