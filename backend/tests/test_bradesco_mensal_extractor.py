@@ -40,3 +40,17 @@ def test_extract_bradesco_mensal_client_pdf():
     assert result.saldo_inicial == 162_652.48
     assert result.saldo_final == 140_916.82
     assert result.ok is True
+
+
+@pytest.mark.skipif(not CLIENT_PDF.is_file(), reason="PDF de exemplo da cliente ausente")
+def test_dedupe_generic_breaks_bradesco_mensal_saldo():
+    from acc_nomad.services.transaction_utils import dedupe_transactions
+
+    pdf_bytes = CLIENT_PDF.read_bytes()
+    text = extract_full_text(pdf_bytes)
+    txs = extract_bradesco_mensal(pdf_bytes)
+    deduped = dedupe_transactions(txs)
+
+    assert len(txs) - len(deduped) == 94
+    result = validate_saldo(text, deduped, get_bank_rules(BankCode.BRADESCO))
+    assert result.delta == 408.24

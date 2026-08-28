@@ -11,6 +11,7 @@ from acc_nomad.models import (
 )
 from acc_nomad.services.bank_detector import detect_bank_from_text
 from acc_nomad.services.bank_rules import get_bank_rules
+from acc_nomad.services.bradesco_mensal_extractor import is_bradesco_mensal
 from acc_nomad.services.classifier import extract_and_classify
 from acc_nomad.services.organizer import sort_transactions
 from acc_nomad.services.pdf_analyzer import analyze_pdf, extract_full_text
@@ -69,7 +70,12 @@ def process_extrato_pdf(
             pdf_bytes=pdf_bytes,
         )
 
-        ordered = dedupe_transactions(all_transactions)
+        if is_bradesco_mensal(full_text):
+            # Extrator mensal já deduplica por página/linha; dedupe genérico
+            # remove tarifas/PIX legítimos repetidos no mesmo dia.
+            ordered = list(all_transactions)
+        else:
+            ordered = dedupe_transactions(all_transactions)
         ordered = sort_transactions(ordered, bank)
         ordered = apply_fornecedor_categories(ordered, fornecedores)
 
