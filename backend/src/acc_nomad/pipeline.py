@@ -41,7 +41,8 @@ async def process_extrato_pdf(
         update_extrato_status(extrato_id, status="processando")
     except SupabaseNotConfiguredError:
         raise ProcessingError(
-            "Backend sem Supabase configurado. Crie backend/.env com SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY."
+            "Backend sem Supabase configurado. Defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY "
+            "no Render (Environment) ou em backend/.env (local)."
         ) from None
 
     try:

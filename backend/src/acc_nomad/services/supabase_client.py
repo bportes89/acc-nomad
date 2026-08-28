@@ -18,7 +18,8 @@ class SupabaseNotConfiguredError(RuntimeError):
 def get_supabase_client() -> Client:
     if not settings.supabase_url or not settings.supabase_service_role_key:
         raise SupabaseNotConfiguredError(
-            "Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY em backend/.env"
+            "Backend sem Supabase. Defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY "
+            "(backend/.env local ou Environment no Render)."
         )
     return create_client(settings.supabase_url, settings.supabase_service_role_key)
 

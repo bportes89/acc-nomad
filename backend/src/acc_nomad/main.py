@@ -47,6 +47,9 @@ async def health() -> dict[str, str]:
         "status": "ok",
         "version": __version__,
         "llm_provider": active_provider_name(),
+        "supabase_configured": bool(
+            settings.supabase_url and settings.supabase_service_role_key
+        ),
     }
 
 
