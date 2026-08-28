@@ -1,4 +1,4 @@
-"""Extrator básico sem IA — para dev/testes quando Claude não está configurado."""
+"""Extrator local de lançamentos — Bradesco, Sicoob, Mercado Pago, etc."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from datetime import date
 from acc_nomad.models import Transaction, TransactionNature
 
 DATE_RE = re.compile(r"\b(\d{2})\s*/\s*(\d{2})\s*/\s*(\d{4})\b")
+DATE_LINE_RE = re.compile(r"^(\d{2})\s*/\s*(\d{2})\s*/\s*(\d{4})\s*(.*)$")
 AMOUNT_LINE_RE = re.compile(
     r"^(\d{1,3}(?:\.\d{3})*,\d{2})\s*([CD])\s*$",
     re.IGNORECASE,
@@ -16,12 +17,23 @@ INLINE_AMOUNT_RE = re.compile(
     r"(\d{1,3}(?:\.\d{3})*,\d{2})\s*([CD])\b",
     re.IGNORECASE,
 )
+NEG_AMOUNT_RE = re.compile(r"^-\s*(\d{1,3}(?:\.\d{3})*,\d{2})\s*$")
 DATE_ONLY_RE = re.compile(r"^(\d{2})\s*/\s*(\d{2})\s*/\s*(\d{4})$")
 RS_AMOUNT_RE = re.compile(r"R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2})")
-DEBIT_HINTS = ("PAGAMENTO", "DEBITO", "DÉBITO", "TARIFA", "TAXA", "SAQUE", "ENVIO PIX")
+MP_ROW_RE = re.compile(
+    r"^(\d{2}/\d{2}/\d{4})\s+(.+?)\s+(-?\s*R\$\s*\d{1,3}(?:\.\d{3})*,\d{2})\s*$"
+)
+
+DEBIT_HINTS = (
+    "PAGAMENTO", "DEBITO", "DÉBITO", "TARIFA", "TAXA", "SAQUE",
+    "ENVIO PIX", "COMPRA", "SAÍDA", "SAIDA",
+)
+SALDO_KEYWORDS = (
+    "SALDO ANTERIOR", "SALDO ANTER", "SALDO FINAL", "SALDO ATUAL",
+    "SALDO DO DIA", "S A L D O",
+)
 SKIP_KEYWORDS = (
-    "SALDO ANTERIOR",
-    "S A L D O",
+    *SALDO_KEYWORDS,
     "LIMITE ESPECIAL",
     "TAXA ",
     "CUSTO EFETIVO",
@@ -45,22 +57,17 @@ def extract_fallback(
     description_parts: list[str] = []
 
     for line in lines:
-        upper = line.upper()
-
-        date_match = DATE_RE.search(line)
-        if date_match and line.count("/") >= 2 and len(line) <= 20:
-            day, month, year = date_match.groups()
-            try:
-                current_date = date(int(year), int(month), int(day))
-            except ValueError:
-                pass
+        parsed_date, date_tail = _parse_date_line(line)
+        if parsed_date:
+            current_date = parsed_date
+            description_parts = [date_tail] if date_tail else []
             continue
 
         amount_line = AMOUNT_LINE_RE.match(line)
         if amount_line and current_date:
             raw_amount, nature_flag = amount_line.groups()
             desc = " ".join(description_parts).strip()
-            if _should_skip(desc, upper):
+            if _should_skip(desc, desc.upper() if desc else line.upper()):
                 description_parts = []
                 continue
 
@@ -69,6 +76,16 @@ def extract_fallback(
             )
             if tx and _remember(tx, seen):
                 transactions.append(tx)
+            description_parts = []
+            continue
+
+        neg = NEG_AMOUNT_RE.match(line)
+        if neg and current_date:
+            desc = " ".join(description_parts).strip()
+            if desc and not _should_skip(desc, desc.upper()):
+                tx = _build_transaction(current_date, desc, neg.group(1), "D", default_category)
+                if tx and _remember(tx, seen):
+                    transactions.append(tx)
             description_parts = []
             continue
 
@@ -88,7 +105,7 @@ def extract_fallback(
         if current_date and not _is_noise_line(line):
             description_parts.append(line)
 
-    return transactions[:500]
+    return transactions[:2000]
 
 
 def extract_all_local(
@@ -96,16 +113,33 @@ def extract_all_local(
     *,
     default_category: str | None = None,
 ) -> list[Transaction]:
-    """Extrai lançamentos com regex (Bradesco C/D, Sicoob R$, etc.)."""
+    """Extrai lançamentos com regex (Bradesco C/D, Sicoob R$, Mercado Pago, etc.)."""
     seen: set[str] = set()
     merged: list[Transaction] = []
-    for tx in extract_fallback(sample_text, default_category=default_category):
-        if _remember(tx, seen):
-            merged.append(tx)
-    for tx in _extract_rs_table(sample_text, default_category=default_category):
-        if _remember(tx, seen):
-            merged.append(tx)
+
+    for extractor in (
+        extract_fallback,
+        _extract_rs_table,
+        _extract_mercado_pago,
+    ):
+        for tx in extractor(sample_text, default_category=default_category):
+            if _remember(tx, seen):
+                merged.append(tx)
+
     return merged
+
+
+def _parse_date_line(line: str) -> tuple[date | None, str]:
+    match = DATE_LINE_RE.match(line.strip())
+    if not match:
+        return None, line
+
+    day, month, year, tail = match.groups()
+    try:
+        parsed = date(int(year), int(month), int(day))
+    except ValueError:
+        return None, line
+    return parsed, tail.strip()
 
 
 def _extract_rs_table(
@@ -113,20 +147,14 @@ def _extract_rs_table(
     *,
     default_category: str | None = None,
 ) -> list[Transaction]:
-    """Extratos cooperativas / PIX com valores em R$."""
     lines = [ln.strip() for ln in sample_text.splitlines() if ln.strip()]
     transactions: list[Transaction] = []
     current_date: date | None = None
 
     for index, line in enumerate(lines):
-        if DATE_ONLY_RE.match(line):
-            match = DATE_ONLY_RE.match(line)
-            assert match is not None
-            day, month, year = match.groups()
-            try:
-                current_date = date(int(year), int(month), int(day))
-            except ValueError:
-                current_date = None
+        parsed_date, _ = _parse_date_line(line)
+        if parsed_date and DATE_ONLY_RE.match(line):
+            current_date = parsed_date
             continue
 
         amount_match = RS_AMOUNT_RE.search(line)
@@ -142,6 +170,59 @@ def _extract_rs_table(
         tx = _build_transaction(current_date, desc, raw_amount, nature_flag, default_category)
         if tx:
             transactions.append(tx)
+
+    return transactions
+
+
+def _extract_mercado_pago(
+    sample_text: str,
+    *,
+    default_category: str | None = None,
+) -> list[Transaction]:
+    """Extrato Mercado Pago / ME — linhas com data + descrição + R$."""
+    transactions: list[Transaction] = []
+    for line in sample_text.splitlines():
+        line = line.strip()
+        if not line or "R$" not in line:
+            continue
+
+        match = MP_ROW_RE.match(line)
+        if match:
+            date_str, desc, amount_part = match.groups()
+            day, month, year = date_str.split("/")
+            try:
+                tx_date = date(int(year), int(month), int(day))
+            except ValueError:
+                continue
+            raw = RS_AMOUNT_RE.search(amount_part)
+            if not raw:
+                continue
+            is_debit = amount_part.strip().startswith("-")
+            nature_flag = "D" if is_debit else "C"
+            tx = _build_transaction(tx_date, desc.strip(), raw.group(1), nature_flag, default_category)
+            if tx and not _should_skip(desc, desc.upper()):
+                transactions.append(tx)
+            continue
+
+        # Formato: 02/01/2025 ... R$ 123,45 (sem C/D)
+        date_match = DATE_RE.search(line)
+        amount_match = RS_AMOUNT_RE.search(line)
+        if date_match and amount_match:
+            day, month, year = date_match.groups()
+            try:
+                tx_date = date(int(year), int(month), int(day))
+            except ValueError:
+                continue
+            desc = line
+            desc = DATE_RE.sub("", desc)
+            desc = RS_AMOUNT_RE.sub("", desc).strip(" -|")
+            if len(desc) < 3 or _should_skip(desc, desc.upper()):
+                continue
+            is_debit = any(h in desc.upper() for h in DEBIT_HINTS) or " -R$" in line
+            nature_flag = "D" if is_debit else "C"
+            tx = _build_transaction(tx_date, desc, amount_match.group(1), nature_flag, default_category)
+            if tx:
+                transactions.append(tx)
 
     return transactions
 
@@ -172,6 +253,8 @@ def _build_transaction(
     default_category: str | None = None,
 ) -> Transaction | None:
     if not description or len(description) < 3:
+        return None
+    if _should_skip(description, description.upper()):
         return None
 
     amount = float(raw_amount.replace(".", "").replace(",", "."))

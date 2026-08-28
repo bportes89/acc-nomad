@@ -11,6 +11,7 @@ from acc_nomad.services.bank_rules import BankRules, get_bank_rules
 from acc_nomad.services.fallback_extractor import extract_all_local
 from acc_nomad.services.fornecedor_matcher import FornecedorMatch, apply_fornecedor_categories
 from acc_nomad.services.llm_providers import active_provider_name, generate_json, generate_json_fast
+from acc_nomad.services.rule_classifier import classify_with_rules
 
 DEFAULT_CATEGORIES = [
     ("Fornecedor / Revenda", "custo variável"),
@@ -147,6 +148,7 @@ def extract_and_classify(
     transactions = extract_all_local(sample_text, default_category=receita_default)
     if transactions:
         transactions = apply_fornecedor_categories(transactions, fornecedores)
+        transactions = classify_with_rules(transactions, default_receita=receita_default)
         return _classify_batch(
             transactions,
             segmento=segmento,
